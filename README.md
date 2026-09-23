@@ -33,6 +33,15 @@ npm run dev
 
 The frontend expects the API at `http://localhost:8000` and normally runs at `http://localhost:5173`. Date-only OJT rules use the Philippine timezone (`Asia/Manila`, UTC+8).
 
+## Render backend deployment
+
+The Laravel API includes `backend/Dockerfile` for a Render Web Service. Use
+the `main` branch, set the root directory to `backend`, choose `Docker`, and
+set the health check path to `/api/health`. Add production `APP_*`, `DB_*`,
+`SESSION_*`, and `SANCTUM_STATEFUL_DOMAINS` values in Render Environment
+Variables; do not upload the local `.env`. After the first deploy, run
+`php artisan migrate --force` in the Render Shell before using the API.
+
 The student-only migration removes obsolete role, coordinator, assignment, submission, and review columns. Back up a populated production database before running `php artisan migrate`; its rollback can recreate the empty columns but cannot restore deleted values.
 
 ## Demo account
