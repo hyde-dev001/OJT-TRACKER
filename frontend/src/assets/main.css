@@ -895,10 +895,11 @@ html[data-theme='dark'] .public-page .motion-info-card:hover {
   box-shadow: 0 10px 24px rgb(0 0 0 / 20%);
 }
 
-html[data-theme='dark'] .register-day:has(input:checked) {
-  border-color: #f8fafc;
-  background: #f8fafc;
-  color: #111827;
+html[data-theme='dark'] .register-day:has(input:checked),
+html[data-theme='dark'] .profile-day:has(input:checked) {
+  border-color: #f8fafc !important;
+  background: #f8fafc !important;
+  color: #111827 !important;
 }
 
 @media (max-width: 767px) {

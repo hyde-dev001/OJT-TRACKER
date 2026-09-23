@@ -178,7 +178,7 @@ function nextDate(value) {
         <p class="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Account information</p>
 
         <form ref="accountForm" data-testid="account-setup-form" class="mt-3 space-y-5" @submit.prevent="continueToOjt">
-          <div class="grid gap-5 sm:grid-cols-2">
+          <div data-testid="register-name-fields" class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem] sm:gap-3">
             <div>
               <label for="register-first-name" class="block text-sm font-semibold text-slate-800">First name</label>
               <input id="register-first-name" v-model="form.first_name" type="text" autocomplete="given-name" required :aria-invalid="Boolean(errors.first_name)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
@@ -189,20 +189,19 @@ function nextDate(value) {
               <input id="register-last-name" v-model="form.last_name" type="text" autocomplete="family-name" required :aria-invalid="Boolean(errors.last_name)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
               <p v-if="errors.last_name" data-testid="field-error-last-name" class="mt-1 text-sm text-red-700" role="alert">{{ errors.last_name[0] }}</p>
             </div>
-          </div>
-
-          <div>
-            <label for="register-suffix" class="block text-sm font-semibold text-slate-800">Suffix <span class="font-normal text-slate-500">(optional)</span></label>
-            <select id="register-suffix" v-model="form.suffix" :aria-invalid="Boolean(errors.suffix)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200">
-              <option value="">None</option>
-              <option value="Jr.">Jr.</option>
-              <option value="Sr.">Sr.</option>
-              <option value="II">II</option>
-              <option value="III">III</option>
-              <option value="IV">IV</option>
-              <option value="V">V</option>
-            </select>
-            <p v-if="errors.suffix" class="mt-1 text-sm text-red-700" role="alert">{{ errors.suffix[0] }}</p>
+            <div>
+              <label for="register-suffix" class="block text-sm font-semibold text-slate-800">Suffix <span class="font-normal text-slate-500">(optional)</span></label>
+              <select id="register-suffix" v-model="form.suffix" :aria-invalid="Boolean(errors.suffix)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200">
+                <option value="">None</option>
+                <option value="Jr.">Jr.</option>
+                <option value="Sr.">Sr.</option>
+                <option value="II">II</option>
+                <option value="III">III</option>
+                <option value="IV">IV</option>
+                <option value="V">V</option>
+              </select>
+              <p v-if="errors.suffix" class="mt-1 text-sm text-red-700" role="alert">{{ errors.suffix[0] }}</p>
+            </div>
           </div>
 
           <div>

@@ -41,6 +41,7 @@ describe('RegisterView', () => {
     expect(wrapper.get('#register-first-name').exists()).toBe(true)
     expect(wrapper.get('#register-last-name').exists()).toBe(true)
     expect(wrapper.get('#register-suffix').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="register-name-fields"]').find('#register-suffix').exists()).toBe(true)
     expect(password.attributes('minlength')).toBe('12')
     expect(password.attributes('pattern')).toBe('(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}')
     expect(wrapper.text()).toContain('12 characters')
