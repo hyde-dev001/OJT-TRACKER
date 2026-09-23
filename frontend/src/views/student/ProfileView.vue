@@ -10,7 +10,9 @@ import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 const form = reactive({
-  name: authStore.user?.name ?? '',
+  first_name: authStore.user?.first_name ?? '',
+  last_name: authStore.user?.last_name ?? '',
+  suffix: authStore.user?.suffix ?? '',
   start_date: '',
   end_date: '',
   work_days: [1, 2, 3, 4, 5],
@@ -74,7 +76,9 @@ const load = async () => {
 
   try {
     const internship = await getStudentInternship()
-    form.name = authStore.user?.name ?? ''
+    form.first_name = authStore.user?.first_name ?? ''
+    form.last_name = authStore.user?.last_name ?? ''
+    form.suffix = authStore.user?.suffix ?? ''
     form.start_date = internship?.start_date ?? ''
     form.end_date = internship?.end_date ?? ''
     form.work_days = Array.isArray(internship?.work_days) && internship.work_days.length
@@ -101,7 +105,9 @@ const save = async () => {
   fieldErrors.value = {}
   const changingPassword = Boolean(form.password || form.password_confirmation)
   const payload = {
-    name: form.name,
+    first_name: form.first_name,
+    last_name: form.last_name,
+    suffix: form.suffix,
     start_date: form.start_date,
     end_date: form.end_date,
     work_days: [...form.work_days].map(Number).sort((left, right) => left - right),
@@ -156,10 +162,31 @@ onMounted(load)
     <section v-else class="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="profile-form-title">
       <h2 id="profile-form-title" class="text-lg font-semibold text-slate-950">Account details</h2>
       <form class="mt-5 space-y-5" @submit.prevent="save">
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label for="profile-first-name" class="block text-sm font-semibold text-slate-800">First name</label>
+            <input id="profile-first-name" v-model="form.first_name" type="text" autocomplete="given-name" required maxlength="100" :aria-invalid="Boolean(fieldErrors.first_name)" class="mt-1 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <p v-if="fieldErrors.first_name" class="mt-1 text-sm text-red-700" role="alert">{{ fieldErrors.first_name[0] }}</p>
+          </div>
+          <div>
+            <label for="profile-last-name" class="block text-sm font-semibold text-slate-800">Last name</label>
+            <input id="profile-last-name" v-model="form.last_name" type="text" autocomplete="family-name" required maxlength="100" :aria-invalid="Boolean(fieldErrors.last_name)" class="mt-1 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <p v-if="fieldErrors.last_name" class="mt-1 text-sm text-red-700" role="alert">{{ fieldErrors.last_name[0] }}</p>
+          </div>
+        </div>
+
         <div>
-          <label for="profile-name" class="block text-sm font-semibold text-slate-800">Name</label>
-          <input id="profile-name" v-model="form.name" type="text" required maxlength="255" :aria-invalid="Boolean(fieldErrors.name)" class="mt-1 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
-          <p v-if="fieldErrors.name" class="mt-1 text-sm text-red-700" role="alert">{{ fieldErrors.name[0] }}</p>
+          <label for="profile-suffix" class="block text-sm font-semibold text-slate-800">Suffix <span class="font-normal text-slate-500">(optional)</span></label>
+          <select id="profile-suffix" v-model="form.suffix" :aria-invalid="Boolean(fieldErrors.suffix)" class="mt-1 block min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200">
+            <option value="">None</option>
+            <option value="Jr.">Jr.</option>
+            <option value="Sr.">Sr.</option>
+            <option value="II">II</option>
+            <option value="III">III</option>
+            <option value="IV">IV</option>
+            <option value="V">V</option>
+          </select>
+          <p v-if="fieldErrors.suffix" class="mt-1 text-sm text-red-700" role="alert">{{ fieldErrors.suffix[0] }}</p>
         </div>
 
         <div>

@@ -30,16 +30,35 @@ describe('ProfileView', () => {
     })
     ensureCsrfCookie.mockResolvedValue({})
     api.put.mockResolvedValue({
-      data: { user: { id: 1, name: 'Updated Student', email: 'student@example.com' } },
+      data: {
+        user: {
+          id: 1,
+          name: 'Updated Student Jr.',
+          first_name: 'Updated',
+          last_name: 'Student',
+          suffix: 'Jr.',
+          email: 'student@example.com',
+        },
+      },
     })
     const pinia = createPinia()
     const auth = useAuthStore(pinia)
-    auth.user = { id: 1, name: 'Student', email: 'student@example.com' }
+    auth.user = {
+      id: 1,
+      name: 'Student',
+      first_name: 'Student',
+      last_name: 'User',
+      suffix: null,
+      email: 'student@example.com',
+    }
 
     const wrapper = mount(ProfileView, { global: { plugins: [pinia] } })
     await flushPromises()
 
     expect(wrapper.get('#profile-email').element.value).toBe('student@example.com')
+    expect(wrapper.get('#profile-first-name').element.value).toBe('Student')
+    expect(wrapper.get('#profile-last-name').element.value).toBe('User')
+    expect(wrapper.get('#profile-suffix').element.value).toBe('')
     expect(wrapper.get('#profile-start-date').element.value).toBe('Sep 22, 2026')
     expect(wrapper.get('#profile-end-date').element.value).toBe('Dec 22, 2026')
     expect(wrapper.get('input[aria-label="Mon"]').element.checked).toBe(true)
@@ -58,7 +77,9 @@ describe('ProfileView', () => {
       await wrapper.get(`[data-testid="${testId}"]`).trigger('click')
     }
 
-    await wrapper.get('#profile-name').setValue('Updated Student')
+    await wrapper.get('#profile-first-name').setValue('Updated')
+    await wrapper.get('#profile-last-name').setValue('Student')
+    await wrapper.get('#profile-suffix').setValue('Jr.')
     await chooseDate(wrapper, 'profile-start-date', '2026-10-01')
     await chooseDate(wrapper, 'profile-end-date', '2027-01-01')
     await wrapper.get('input[aria-label="Tue"]').setValue(true)
@@ -69,7 +90,9 @@ describe('ProfileView', () => {
     await flushPromises()
 
     expect(api.put).toHaveBeenCalledWith('/profile', {
-      name: 'Updated Student',
+      first_name: 'Updated',
+      last_name: 'Student',
+      suffix: 'Jr.',
       start_date: '2026-10-01',
       end_date: '2027-01-01',
       work_days: [1, 2, 3, 5],
@@ -79,7 +102,7 @@ describe('ProfileView', () => {
       password_confirmation: 'NewStrongPassword1!',
     })
     expect(document.body.textContent).toContain('Password updated')
-    expect(auth.user.name).toBe('Updated Student')
+    expect(auth.user.name).toBe('Updated Student Jr.')
   })
 
   it('shows a popup when a password change fails', async () => {
@@ -90,7 +113,14 @@ describe('ProfileView', () => {
     })
     const pinia = createPinia()
     const auth = useAuthStore(pinia)
-    auth.user = { id: 1, name: 'Student', email: 'student@example.com' }
+    auth.user = {
+      id: 1,
+      name: 'Student User',
+      first_name: 'Student',
+      last_name: 'User',
+      suffix: null,
+      email: 'student@example.com',
+    }
 
     const wrapper = mount(ProfileView, { global: { plugins: [pinia] } })
     await flushPromises()

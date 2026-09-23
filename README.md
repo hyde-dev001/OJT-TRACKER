@@ -59,7 +59,7 @@ The seeder is idempotent and creates one active student internship with 500 tota
 
 ## Current workflow
 
-- Registration uses Account Setup (name, optional suffix, email, password, and confirmation) followed by OJT Setup (required hours, OJT start date, required target end date, recurring work days, and expected hours per day). The account and internship are created together, and the student enters Overview after successful registration.
+- Registration uses Account Setup (first name, last name, optional suffix, email, password, and confirmation) followed by OJT Setup (required hours, OJT start date, required target end date, recurring work days, and expected hours per day). The account and internship are created together, and the student enters Overview after successful registration.
 - Overview: review backend-calculated rendered progress, required pace/status, up to five Needs Attention items, and completion readiness.
 - Work Hours: configure total required OJT hours, add completed logs that count immediately, edit/delete logs, and view server-calculated rendered progress.
 - Tasks: add/edit/delete eligible tasks, start them, mark them completed, and page/filter larger lists.

@@ -92,6 +92,36 @@ class AuthTest extends TestCase
         $this->assertSame(1, Internship::where('student_id', $student->id)->count());
     }
 
+    public function test_student_registration_stores_first_last_and_suffix_name_parts(): void
+    {
+        $this->stateful()->postJson('/api/register', [
+            'first_name' => 'Maria',
+            'last_name' => 'Santos',
+            'suffix' => 'III',
+            'email' => 'maria.santos@example.com',
+            'password' => 'StrongPassword1!',
+            'password_confirmation' => 'StrongPassword1!',
+            'required_hours' => 500,
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'work_days' => [1, 2, 3, 4, 5],
+            'expected_hours_per_day' => 8,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('user.first_name', 'Maria')
+            ->assertJsonPath('user.last_name', 'Santos')
+            ->assertJsonPath('user.suffix', 'III')
+            ->assertJsonPath('user.name', 'Maria Santos III');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'maria.santos@example.com',
+            'first_name' => 'Maria',
+            'last_name' => 'Santos',
+            'suffix' => 'III',
+            'name' => 'Maria Santos III',
+        ]);
+    }
+
     public function test_registration_normalizes_duplicate_work_days_and_converts_expected_hours(): void
     {
         $this->stateful()->postJson('/api/register', [
@@ -308,6 +338,9 @@ class AuthTest extends TestCase
     {
         $student = User::factory()->create([
             'name' => 'Original Student',
+            'first_name' => 'Original',
+            'last_name' => 'Student',
+            'suffix' => null,
             'password' => Hash::make('secret-password'),
         ]);
         $internship = Internship::factory()->create([
@@ -318,7 +351,9 @@ class AuthTest extends TestCase
 
         $this->stateful()->actingAs($student)
             ->putJson('/api/profile', [
-                'name' => 'Updated Student',
+                'first_name' => 'Updated',
+                'last_name' => 'Student',
+                'suffix' => 'Jr.',
                 'start_date' => '2026-10-01',
                 'end_date' => '2027-01-01',
                 'work_days' => [1, 3, 5],
@@ -328,7 +363,10 @@ class AuthTest extends TestCase
                 'password_confirmation' => 'NewStrongPassword1!',
             ])
             ->assertOk()
-            ->assertJsonPath('user.name', 'Updated Student')
+            ->assertJsonPath('user.name', 'Updated Student Jr.')
+            ->assertJsonPath('user.first_name', 'Updated')
+            ->assertJsonPath('user.last_name', 'Student')
+            ->assertJsonPath('user.suffix', 'Jr.')
             ->assertJsonPath('user.email', $student->email)
             ->assertJsonPath('internship.start_date', '2026-10-01')
             ->assertJsonPath('internship.end_date', '2027-01-01')
@@ -337,7 +375,10 @@ class AuthTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'id' => $student->id,
-            'name' => 'Updated Student',
+            'name' => 'Updated Student Jr.',
+            'first_name' => 'Updated',
+            'last_name' => 'Student',
+            'suffix' => 'Jr.',
         ]);
         $this->assertSame('2026-10-01', $internship->refresh()->start_date->toDateString());
         $this->assertSame('2027-01-01', $internship->refresh()->end_date->toDateString());

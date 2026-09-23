@@ -16,7 +16,10 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['required_without:name', 'nullable', 'string', 'max:100'],
+            'last_name' => ['required_without:name', 'nullable', 'string', 'max:100'],
+            'suffix' => ['nullable', 'string', 'max:20', 'in:Jr.,Sr.,II,III,IV,V'],
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
             'work_days' => ['sometimes', 'array', 'min:1'],
@@ -43,5 +46,14 @@ class UpdateProfileRequest extends FormRequest
 
             $this->merge(['work_days' => $workDays]);
         }
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'first_name.required' => 'Please enter your first name.',
+            'last_name.required' => 'Please enter your last name.',
+        ];
     }
 }

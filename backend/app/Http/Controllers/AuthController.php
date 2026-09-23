@@ -33,14 +33,14 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $nameAttributes = $this->nameAttributes($data);
 
-        $user = DB::transaction(function () use ($data): User {
-            $user = User::create([
-                'name' => trim($data['name'].' '.($data['suffix'] ?? '')),
+        $user = DB::transaction(function () use ($data, $nameAttributes): User {
+            $user = User::create(array_merge($nameAttributes, [
                 'email' => $data['email'],
                 'password' => $data['password'],
                 'email_verified_at' => now(),
-            ]);
+            ]));
 
             $user->studentInternships()->create([
                 'required_minutes' => $data['required_hours'] * 60,
@@ -84,9 +84,10 @@ class AuthController extends Controller
     {
         $data = $request->validated();
         $user = $request->user();
+        $nameAttributes = $this->nameAttributes($data);
 
-        $internship = DB::transaction(function () use ($data, $user) {
-            $attributes = ['name' => $data['name']];
+        $internship = DB::transaction(function () use ($data, $nameAttributes, $user) {
+            $attributes = $nameAttributes;
 
             if (filled($data['password'] ?? null)) {
                 $attributes['password'] = $data['password'];
@@ -135,12 +136,43 @@ class AuthController extends Controller
         return response()->noContent();
     }
 
-    /** @return array{id: int, name: string, email: string} */
-    private function userPayload(\App\Models\User $user): array
+    /** @param array<string, mixed> $data
+     * @return array{name: string, first_name: ?string, last_name: ?string, suffix: ?string}
+     */
+    private function nameAttributes(array $data): array
+    {
+        $firstName = trim((string) ($data['first_name'] ?? ''));
+        $lastName = trim((string) ($data['last_name'] ?? ''));
+        $suffix = trim((string) ($data['suffix'] ?? ''));
+
+        if ($firstName === '' && $lastName === '' && filled($data['name'] ?? null)) {
+            $parts = preg_split('/\s+/', trim((string) $data['name']), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+            if ($parts !== [] && $suffix === '' && in_array(end($parts), ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'], true)) {
+                $suffix = array_pop($parts);
+            }
+
+            $firstName = array_shift($parts) ?? '';
+            $lastName = implode(' ', $parts);
+        }
+
+        return [
+            'name' => trim(implode(' ', array_filter([$firstName, $lastName, $suffix]))),
+            'first_name' => $firstName !== '' ? $firstName : null,
+            'last_name' => $lastName !== '' ? $lastName : null,
+            'suffix' => $suffix !== '' ? $suffix : null,
+        ];
+    }
+
+    /** @return array{id: int, name: string, first_name: ?string, last_name: ?string, suffix: ?string, email: string} */
+    private function userPayload(User $user): array
     {
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'suffix' => $user->suffix,
             'email' => $user->email,
         ];
     }

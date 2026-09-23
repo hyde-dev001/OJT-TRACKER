@@ -38,8 +38,8 @@ The application should feel like one student workflow rather than unrelated CRUD
 
 ### Student onboarding
 
-Registration is a two-step flow. Account Setup collects the student's name,
-optional suffix, email, password, and confirmation. The suffix is stored as
+Registration is a two-step flow. Account Setup collects the student's first name,
+last name, optional suffix, email, password, and confirmation. The suffix is stored as
 part of the registered display name. Email availability is checked before the
 student can continue to OJT Setup. OJT Setup collects Required OJT Hours,
 OJT Start Date, Target End Date, recurring OJT Work Days, and Expected Hours

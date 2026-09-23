@@ -16,7 +16,9 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['required_without:name', 'nullable', 'string', 'max:100'],
+            'last_name' => ['required_without:name', 'nullable', 'string', 'max:100'],
             'suffix' => ['nullable', 'string', 'max:20', 'in:Jr.,Sr.,II,III,IV,V'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => [
@@ -50,7 +52,8 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Please enter your name.',
+            'first_name.required' => 'Please enter your first name.',
+            'last_name.required' => 'Please enter your last name.',
             'email.email' => 'Enter a valid email address.',
             'email.unique' => 'An account already exists with this email.',
             'required_hours.required' => 'Required OJT hours must be greater than 0.',

@@ -6,7 +6,6 @@ use App\Models\Internship;
 use App\Models\Requirement;
 use App\Models\Task;
 use App\Models\User;
-use App\Models\WorkLog;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -23,6 +22,9 @@ class DatabaseSeeder extends Seeder
             ['email' => 'student@example.com'],
             [
                 'name' => 'Demo Student',
+                'first_name' => 'Demo',
+                'last_name' => 'Student',
+                'suffix' => null,
                 'password' => 'OjtTracker!2026',
                 'email_verified_at' => now(),
             ],

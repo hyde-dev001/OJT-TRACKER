@@ -38,6 +38,8 @@ describe('RegisterView', () => {
 
     expect(wrapper.get('[data-testid="registration-step-1"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="registration-step-2"]').exists()).toBe(false)
+    expect(wrapper.get('#register-first-name').exists()).toBe(true)
+    expect(wrapper.get('#register-last-name').exists()).toBe(true)
     expect(wrapper.get('#register-suffix').exists()).toBe(true)
     expect(password.attributes('minlength')).toBe('12')
     expect(password.attributes('pattern')).toBe('(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}')
@@ -136,7 +138,8 @@ describe('RegisterView', () => {
     await wrapper.get('[data-testid="account-setup-form"]').trigger('submit')
     await wrapper.get('[data-testid="back-registration"]').trigger('click')
 
-    expect(wrapper.get('#register-name').element.value).toBe('New Student')
+    expect(wrapper.get('#register-first-name').element.value).toBe('New')
+    expect(wrapper.get('#register-last-name').element.value).toBe('Student')
     expect(wrapper.get('#register-suffix').element.value).toBe('Jr.')
     expect(wrapper.get('#register-email').element.value).toBe('new@example.com')
     expect(wrapper.get('#register-password').element.value).toBe('StrongPassword1!')
@@ -172,7 +175,8 @@ describe('RegisterView', () => {
     await flushPromises()
 
     expect(api.post).toHaveBeenCalledWith('/register', {
-      name: 'New Student',
+      first_name: 'New',
+      last_name: 'Student',
       suffix: 'Jr.',
       email: 'new@example.com',
       password: 'StrongPassword1!',
@@ -210,7 +214,8 @@ describe('RegisterView', () => {
 })
 
 async function fillAccount(wrapper) {
-  await wrapper.get('#register-name').setValue('New Student')
+  await wrapper.get('#register-first-name').setValue('New')
+  await wrapper.get('#register-last-name').setValue('Student')
   await wrapper.get('#register-suffix').setValue('Jr.')
   await wrapper.get('#register-email').setValue('new@example.com')
   await wrapper.get('#register-password').setValue('StrongPassword1!')
