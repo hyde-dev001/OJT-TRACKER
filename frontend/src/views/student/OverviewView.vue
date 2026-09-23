@@ -125,9 +125,9 @@ onMounted(load)
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">OJT Progress</p>
             <h2 id="overview-progress-title" class="mt-2 text-xl font-semibold text-slate-950">Rendered hours</h2>
           </div>
-          <div class="text-right">
+          <div data-testid="overview-progress-meta" class="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-right">
             <p data-testid="overview-rendered-hours" class="text-2xl font-semibold tracking-tight text-slate-950">{{ displayMinutes(overview.progress.rendered_minutes) }} of {{ displayMinutes(overview.progress.required_minutes) }} completed</p>
-            <p class="mt-1 text-sm font-semibold text-slate-600">{{ overview.progress.percentage }}%</p>
+            <p data-testid="overview-progress-percentage" class="text-sm font-semibold text-slate-600">{{ overview.progress.percentage }}%</p>
           </div>
         </div>
         <div class="mt-5">

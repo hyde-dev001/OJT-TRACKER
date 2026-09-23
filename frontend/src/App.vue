@@ -77,9 +77,6 @@ const themeLabel = computed(() => theme.value === 'dark' ? 'Switch to light mode
             <svg v-else viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z" /></svg>
           </button>
           <StudentAccountMenu :user="authStore.user" @sign-out="openLogoutDialog" />
-          <button type="button" class="mobile-menu-trigger" data-testid="mobile-menu-trigger" aria-label="Open menu" aria-controls="mobile-navigation-drawer" :aria-expanded="mobileMenuOpen" @click="mobileMenuOpen = true">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-          </button>
         </div>
         <div v-else class="app-header-actions app-header-actions--public flex items-center gap-2 text-sm font-semibold">
           <div class="desktop-public-nav flex items-center gap-1">

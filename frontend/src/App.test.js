@@ -126,12 +126,7 @@ describe('App shell', () => {
     expect(wrapper.get('[data-testid="mobile-bottom-nav-work-hours"]').text()).toContain('Work Hours')
     expect(wrapper.get('[data-testid="mobile-bottom-nav-tasks"]').text()).toContain('Tasks')
     expect(wrapper.get('[data-testid="mobile-bottom-nav-requirements"]').text()).toContain('Requirements')
-
-    await wrapper.get('[data-testid="mobile-menu-trigger"]').trigger('click')
-    expect(wrapper.get('[data-testid="mobile-navigation-drawer"]').text()).not.toContain('Profile & Password')
-
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    await nextTick()
+    expect(wrapper.find('[data-testid="mobile-menu-trigger"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="mobile-navigation-drawer"]').exists()).toBe(false)
     wrapper.unmount()
   })
