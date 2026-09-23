@@ -1,0 +1,14 @@
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Backend dependencies and local environment
+backend/vendor/
+backend/.env
+backend/database/*.sqlite
+backend/storage/*.key
+
+# Local tooling
+.phpunit.result.cache
+.DS_Store
