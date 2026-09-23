@@ -25,9 +25,12 @@ RUN composer install \
     --no-interaction \
     --no-progress \
     --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --no-scripts
 
 COPY . .
+
+RUN php artisan package:discover --ansi
 
 RUN mkdir -p \
         storage/framework/cache \
