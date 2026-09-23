@@ -33,6 +33,13 @@ npm run dev
 
 The frontend expects the API at `http://localhost:8000` and normally runs at `http://localhost:5173`. Date-only OJT rules use the Philippine timezone (`Asia/Manila`, UTC+8).
 
+## Vercel frontend deployment
+
+Set the Vercel project root directory to `frontend`, use `npm run build` with
+`dist` as the output directory, and set `VITE_API_BASE_URL` to `/api`. The
+frontend's `vercel.json` proxies `/api/*` and `/sanctum/*` to the Render API so
+Sanctum session and CSRF cookies stay same-origin in the browser.
+
 ## Render backend deployment
 
 The Laravel API includes `backend/Dockerfile` for a Render Web Service. Use
