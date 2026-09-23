@@ -81,7 +81,6 @@ onBeforeUnmount(() => {
           <div class="min-w-0">
             <p class="truncate font-semibold text-slate-950">{{ props.user?.name || 'Student' }}</p>
             <p class="truncate text-sm text-slate-600">{{ props.user?.email || 'Student account' }}</p>
-            <span class="account-role-badge">Student</span>
           </div>
         </div>
         <div class="account-menu__items">

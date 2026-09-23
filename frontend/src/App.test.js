@@ -67,7 +67,6 @@ describe('App shell', () => {
     await wrapper.get('[data-testid="account-trigger"]').trigger('click')
     expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('John Daniel Paragas')
     expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('student@example.com')
-    expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('Student')
 
     await wrapper.get('[data-testid="account-sign-out"]').trigger('click')
     expect(document.body.textContent).toContain('Sign out?')

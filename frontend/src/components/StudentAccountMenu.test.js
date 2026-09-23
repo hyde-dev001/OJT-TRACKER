@@ -28,7 +28,7 @@ describe('StudentAccountMenu', () => {
     expect(wrapper.get('[data-testid="account-avatar"]').text()).toBe('JD')
     expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('John Daniel Paragas')
     expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('student@example.com')
-    expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('Student')
+    expect(wrapper.find('.account-role-badge').exists()).toBe(false)
     expect(wrapper.get('[data-testid="account-profile"]').attributes('href')).toBe('/student/profile')
 
     await wrapper.get('[data-testid="account-profile"]').trigger('click')
