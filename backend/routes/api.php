@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Student\InternshipController;
 use App\Http\Controllers\Student\OverviewController;
 use App\Http\Controllers\Student\RequirementController;
+use App\Http\Controllers\Student\SummaryExportController;
 use App\Http\Controllers\Student\TaskController;
 use App\Http\Controllers\Student\WorkLogController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('student')->group(function () {
         Route::get('/overview', OverviewController::class);
+        Route::get('/overview/export', SummaryExportController::class);
         Route::get('/internship', [InternshipController::class, 'show']);
         Route::put('/internship', [InternshipController::class, 'update']);
 

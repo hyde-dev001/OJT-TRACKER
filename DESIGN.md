@@ -105,6 +105,10 @@ The assistant uses inclusive configured workdays, does not apply holidays,
 and never claims official school/company completion. A pace-unavailable state
 must not be presented as At risk merely because pace inputs are missing.
 
+The loaded Overview offers one `Export Summary` action for a print-friendly,
+white A4 snapshot of the student's current tracked progress. It is for personal
+monitoring and clearly disclaims official attendance or completion verification.
+
 Public navigation may include Home, About, and Sign in/Register. The product brand is a visual identity element; it must not unexpectedly redirect an authenticated student away from the current workflow.
 
 ## Work Hours

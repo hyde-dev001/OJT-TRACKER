@@ -1,11 +1,30 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import OverviewView from './OverviewView.vue'
 import * as ojt from '../../services/ojt'
 
 vi.mock('../../services/ojt', () => ({
   getStudentOverview: vi.fn(),
+  exportStudentSummary: vi.fn(),
 }))
+
+const pdfResponse = (headers = {
+  'content-type': 'application/pdf',
+  'content-disposition': 'attachment; filename="OJT-Progress-Summary-2026-09-24.pdf"',
+}) => ({ data: new Blob(['%PDF']), headers })
+
+const stubDownload = () => {
+  const createObjectURL = vi.fn(() => 'blob:ojt-summary')
+  const revokeObjectURL = vi.fn()
+  const clicks = []
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+    clicks.push({ href: this.href, download: this.download })
+  })
+
+  return { createObjectURL, revokeObjectURL, clicks }
+}
 
 const overview = () => ({
   internship: {
@@ -58,10 +77,17 @@ describe('student OverviewView', () => {
     ojt.getStudentOverview.mockResolvedValue(overview())
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
   it('renders backend progress, pace, attention, and readiness data', async () => {
     const wrapper = mount(OverviewView, { global })
     await flushPromises()
 
+    expect(wrapper.get('[data-testid="overview-export"]').text()).toBe('Export Summary')
     expect(wrapper.get('[data-testid="overview-context"]').text()).toContain('Mon-Fri')
     expect(wrapper.get('[data-testid="overview-context"]').text()).toContain('8h expected/day')
     expect(wrapper.get('[data-testid="overview-progress"]').text()).toContain('48%')
@@ -77,10 +103,33 @@ describe('student OverviewView', () => {
     expect(wrapper.get('[data-testid="overview-attention-item"]').text()).toContain('Medical clearance')
     expect(wrapper.get('[data-testid="overview-attention-item"] a').attributes('href')).toBe('/student/requirements')
     expect(wrapper.get('[data-testid="overview-attention"]').text()).not.toContain('Priority')
-    expect(wrapper.get('[data-testid="overview-completion"]').text()).toContain('260h of OJT hours')
+    expect(wrapper.get('[data-testid="overview-completion"]').text()).toContain('260h')
+    expect(wrapper.get('[data-testid="overview-completion"]').text()).toContain('OJT hours remaining')
     expect(wrapper.get('[data-testid="overview-completion"]').text()).toContain('Medical clearance')
     expect(wrapper.get('[data-testid="overview-completion"]').text()).not.toContain('or a required item')
     expect(wrapper.text()).not.toContain('Work logs')
+  })
+
+  it('keeps long completion blocker lists compact and links to the full list', async () => {
+    const data = overview()
+    data.completion.incomplete_required_requirements = Array.from({ length: 6 }, (_, index) => ({
+      id: index + 1,
+      title: `Requirement ${index + 1}`,
+      due_date: '2026-09-23',
+    }))
+    ojt.getStudentOverview.mockResolvedValue(data)
+
+    const wrapper = mount(OverviewView, { global })
+    await flushPromises()
+
+    const requirements = wrapper.findAll('[data-testid="overview-completion-requirement"]')
+    expect(requirements).toHaveLength(3)
+    expect(requirements[0].text()).toContain('Requirement 1')
+    expect(requirements[2].text()).toContain('Requirement 3')
+    expect(wrapper.get('[data-testid="overview-completion-requirement-count"]').text()).toContain('6 incomplete required items')
+    expect(wrapper.get('[data-testid="overview-completion-requirements-more"]').text()).toBe('+3 more')
+    expect(wrapper.get('[data-testid="overview-completion-requirements-more"]').attributes('href')).toBe('/student/requirements')
+    expect(wrapper.get('[data-testid="overview-completion"]').text()).not.toContain('Requirement 4')
   })
 
   it('shows the ready state when the backend reports readiness', async () => {
@@ -146,10 +195,12 @@ describe('student OverviewView', () => {
     const wrapper = mount(OverviewView, { global })
 
     expect(wrapper.get('[data-testid="overview-loading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="overview-export"]').exists()).toBe(false)
     rejectRequest(new Error('AxiosError: database details'))
     await flushPromises()
 
     expect(wrapper.get('[data-testid="overview-error"]').text()).toContain("We couldn't load your OJT overview.")
+    expect(wrapper.find('[data-testid="overview-export"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('AxiosError')
 
     ojt.getStudentOverview.mockResolvedValueOnce(overview())
@@ -168,5 +219,93 @@ describe('student OverviewView', () => {
     expect(wrapper.get('[data-testid="overview-empty"]').text()).toContain('No OJT setup found')
     expect(wrapper.get('[data-testid="overview-empty"]').text()).toContain('Complete your OJT setup before using the progress assistant.')
     expect(wrapper.find('[data-testid="overview-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="overview-export"]').exists()).toBe(false)
+  })
+
+  it('downloads one PDF and revokes its temporary object URL', async () => {
+    const response = pdfResponse()
+    const download = stubDownload()
+    ojt.exportStudentSummary.mockResolvedValue(response)
+    const wrapper = mount(OverviewView, { global })
+    await flushPromises()
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+    await wrapper.get('[data-testid="overview-export"]').trigger('click')
+    await flushPromises()
+
+    expect(ojt.exportStudentSummary).toHaveBeenCalledTimes(1)
+    expect(download.createObjectURL).toHaveBeenCalledWith(response.data)
+    expect(download.clicks).toEqual([{
+      href: 'blob:ojt-summary',
+      download: 'OJT-Progress-Summary-2026-09-24.pdf',
+    }])
+    const revokeTimer = timeoutSpy.mock.calls.find(([, delay]) => delay === 1000)
+    expect(revokeTimer).toBeDefined()
+    revokeTimer[0]()
+    expect(download.revokeObjectURL).toHaveBeenCalledWith('blob:ojt-summary')
+  })
+
+  it('disables repeated clicks while the PDF request is pending', async () => {
+    let resolveExport
+    const response = pdfResponse()
+    const download = stubDownload()
+    ojt.exportStudentSummary.mockReturnValue(new Promise((resolve) => { resolveExport = resolve }))
+    const wrapper = mount(OverviewView, { global })
+    await flushPromises()
+    const button = wrapper.get('[data-testid="overview-export"]')
+
+    button.element.click()
+    button.element.click()
+    await nextTick()
+
+    expect(ojt.exportStudentSummary).toHaveBeenCalledTimes(1)
+    expect(button.text()).toBe('Generating…')
+    expect(button.attributes('disabled')).toBeDefined()
+
+    resolveExport(response)
+    await flushPromises()
+
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(download.clicks).toHaveLength(1)
+  })
+
+  it('shows a generic retry error and succeeds on the next attempt', async () => {
+    const download = stubDownload()
+    ojt.exportStudentSummary
+      .mockRejectedValueOnce(new Error('database password leaked'))
+      .mockResolvedValueOnce(pdfResponse())
+    const wrapper = mount(OverviewView, { global })
+    await flushPromises()
+    const button = wrapper.get('[data-testid="overview-export"]')
+
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="overview-export-error"]').text()).toBe(
+      "We couldn't generate your OJT summary. Please try again.",
+    )
+    expect(wrapper.find('[role="alert"]').text()).not.toContain('database password leaked')
+    expect(button.attributes('disabled')).toBeUndefined()
+
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(ojt.exportStudentSummary).toHaveBeenCalledTimes(2)
+    expect(download.clicks).toHaveLength(1)
+    expect(wrapper.find('[data-testid="overview-export-error"]').exists()).toBe(false)
+  })
+
+  it('uses a Philippine-date fallback filename when the header is unavailable', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-23T18:30:00.000Z'))
+    const download = stubDownload()
+    ojt.exportStudentSummary.mockResolvedValue(pdfResponse({ 'content-type': 'application/pdf' }))
+    const wrapper = mount(OverviewView, { global })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="overview-export"]').trigger('click')
+    await flushPromises()
+
+    expect(download.clicks[0].download).toBe('OJT-Progress-Summary-2026-09-24.pdf')
   })
 })

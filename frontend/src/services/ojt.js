@@ -22,6 +22,10 @@ function pageParams({ page = 1, filter } = {}) {
 
 export const getStudentInternship = () => unwrap(api.get('/student/internship'))
 export const getStudentOverview = () => unwrap(api.get('/student/overview'))
+export const exportStudentSummary = () => api.get('/student/overview/export', {
+  responseType: 'blob',
+  timeout: 90000,
+})
 export const updateStudentInternship = (requiredHours) => unwrap(api.put('/student/internship', { required_hours: Number(requiredHours) }))
 export const listStudentWorkLogs = (options = {}) => unwrapPage(api.get('/student/work-logs', { params: pageParams(options) }))
 export const createWorkLog = (payload) => unwrap(api.post('/student/work-logs', payload))

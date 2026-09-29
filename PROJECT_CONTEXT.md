@@ -133,8 +133,9 @@ There is no role selector, coordinator login, coordinator route, review endpoint
 
 ## Explicitly out of scope
 
-- Notifications, analytics, reports, AI, or external completion certification
-- official attendance certification
+- Notifications, full reporting/analytics modules, AI, or external completion
+  certification; the only export exception is the personal progress-summary PDF
+- Official attendance certification or verification
 - document-management or upload workflows
 - school, company, HR, payroll, class, or grading modules
 - mobile app, chat, video, biometrics, GPS, QR attendance, or payments

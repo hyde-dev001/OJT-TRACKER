@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from './api'
-import { getStudentOverview, listStudentRequirements, listStudentTasks, listStudentWorkLogs } from './ojt'
+import { exportStudentSummary, getStudentOverview, listStudentRequirements, listStudentTasks, listStudentWorkLogs } from './ojt'
 
 vi.mock('./api', () => ({
   default: {
@@ -36,6 +36,21 @@ describe('student OJT service', () => {
 
     await expect(getStudentOverview()).resolves.toEqual({ progress: { percentage: 48 } })
     expect(api.get).toHaveBeenCalledWith('/student/overview')
+  })
+
+  it('requests the summary as a PDF blob with a Render-friendly timeout', async () => {
+    const response = {
+      data: new Blob(['%PDF']),
+      headers: { 'content-disposition': 'attachment; filename="OJT-Progress-Summary-2026-09-24.pdf"' },
+    }
+    api.get.mockResolvedValue(response)
+
+    await expect(exportStudentSummary()).resolves.toBe(response)
+
+    expect(api.get).toHaveBeenCalledWith('/student/overview/export', {
+      responseType: 'blob',
+      timeout: 90000,
+    })
   })
 
   it('sends task pagination and status filter parameters', async () => {

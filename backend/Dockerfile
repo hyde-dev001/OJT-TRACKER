@@ -36,6 +36,7 @@ RUN mkdir -p \
         storage/framework/cache \
         storage/framework/sessions \
         storage/framework/views \
+        storage/fonts \
         bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
 

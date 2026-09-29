@@ -152,6 +152,7 @@ describe('RegisterView', () => {
 
     await fillAccount(wrapper)
     await wrapper.get('[data-testid="account-setup-form"]').trigger('submit')
+    await chooseDate(wrapper, 'register-start-date', '2026-09-01')
     await chooseDate(wrapper, 'register-end-date', '2026-09-30')
     await chooseDate(wrapper, 'register-start-date', '2026-10-01')
     await wrapper.get('[data-testid="ojt-setup-form"]').trigger('submit')

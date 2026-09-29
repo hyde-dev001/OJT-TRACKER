@@ -1,16 +1,27 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import EmptyState from '../../components/EmptyState.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import ProgressBar from '../../components/ProgressBar.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
-import { getStudentOverview } from '../../services/ojt'
+import { exportStudentSummary, getStudentOverview } from '../../services/ojt'
 import { formatDate, formatDuration } from '../../utils/formatters'
 
 const overview = ref(null)
 const loading = ref(true)
 const error = ref('')
+const exporting = ref(false)
+const exportError = ref('')
+const completionRequirementSummary = computed(() => {
+  const requirements = overview.value?.completion?.incomplete_required_requirements ?? []
+
+  return {
+    count: requirements.length,
+    visible: requirements.slice(0, 3),
+    additional: Math.max(0, requirements.length - 3),
+  }
+})
 
 const load = async () => {
   loading.value = true
@@ -30,6 +41,44 @@ const load = async () => {
 const displayMinutes = (minutes) => minutes === null || minutes === undefined
   ? 'Not available'
   : formatDuration(minutes)
+
+const downloadSummary = async () => {
+  if (exporting.value) return
+
+  exporting.value = true
+  exportError.value = ''
+
+  try {
+    const response = await exportStudentSummary()
+    if (!response.headers['content-type']?.includes('application/pdf')) {
+      throw new Error('Unexpected export response')
+    }
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date())
+    const value = (type) => parts.find((part) => part.type === type).value
+    const fallback = `OJT-Progress-Summary-${value('year')}-${value('month')}-${value('day')}.pdf`
+    const disposition = response.headers['content-disposition'] ?? ''
+    const match = /filename="?(OJT-Progress-Summary-\d{4}-\d{2}-\d{2}\.pdf)"?/i.exec(disposition)
+    const filename = match?.[1] ?? fallback
+    const url = URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch {
+    exportError.value = "We couldn't generate your OJT summary. Please try again."
+  } finally {
+    exporting.value = false
+  }
+}
 
 const formatWorkDays = (workDays) => {
   const days = [...new Set((workDays ?? []).map(Number))]
@@ -91,7 +140,25 @@ onMounted(load)
 
 <template>
   <main data-testid="student-overview" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-    <PageHeader title="Overview" description="See your current OJT status, priorities, and completion readiness." />
+    <PageHeader title="Overview" description="See your current OJT status, priorities, and completion readiness.">
+      <template v-if="overview && !loading && !error" #action>
+        <div class="flex flex-col items-start gap-2">
+          <button
+            type="button"
+            data-testid="overview-export"
+            class="app-button app-button--primary"
+            :disabled="exporting"
+            :aria-busy="exporting"
+            @click="downloadSummary"
+          >
+            {{ exporting ? 'Generating…' : 'Export Summary' }}
+          </button>
+          <p v-if="exportError" data-testid="overview-export-error" class="max-w-full text-sm text-red-700 sm:max-w-64" role="alert">
+            {{ exportError }}
+          </p>
+        </div>
+      </template>
+    </PageHeader>
 
     <div v-if="loading" data-testid="overview-loading" class="mt-8 space-y-3 motion-safe:animate-pulse" role="status" aria-label="Loading your OJT overview">
       <div class="h-4 w-32 rounded bg-slate-200" />
@@ -212,14 +279,39 @@ onMounted(load)
         </template>
 
         <template v-else>
-          <h3 class="mt-5 text-sm font-semibold text-slate-900">Still needed:</h3>
-          <ul class="mt-2 space-y-2 text-sm text-slate-700">
-            <li v-if="overview.completion.remaining_minutes > 0">{{ displayMinutes(overview.completion.remaining_minutes) }} of OJT hours</li>
-            <li v-for="requirement in overview.completion.incomplete_required_requirements" :key="requirement.id">
-              <RouterLink to="/student/requirements" class="font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-950">{{ requirement.title }}</RouterLink>
-              <span v-if="requirement.due_date" class="text-slate-600"> · due {{ formatDate(requirement.due_date) }}</span>
+          <h3 class="mt-5 text-sm font-semibold text-slate-900">Still needed</h3>
+          <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div v-if="overview.completion.remaining_minutes > 0" class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">OJT hours remaining</p>
+              <p class="mt-1 font-semibold text-slate-950">{{ displayMinutes(overview.completion.remaining_minutes) }}</p>
+            </div>
+            <div v-if="completionRequirementSummary.count" class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Required items</p>
+              <p data-testid="overview-completion-requirement-count" class="mt-1 font-semibold text-slate-950">
+                {{ completionRequirementSummary.count }} incomplete required {{ completionRequirementSummary.count === 1 ? 'item' : 'items' }}
+              </p>
+            </div>
+          </div>
+          <ul v-if="completionRequirementSummary.count" class="mt-3 divide-y divide-slate-200 text-sm text-slate-700">
+            <li
+              v-for="requirement in completionRequirementSummary.visible"
+              :key="requirement.id"
+              data-testid="overview-completion-requirement"
+              class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
+            >
+              <RouterLink to="/student/requirements" class="min-w-0 break-words font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">{{ requirement.title }}</RouterLink>
+              <span v-if="requirement.due_date" class="shrink-0 text-sm text-slate-600">Due {{ formatDate(requirement.due_date) }}</span>
             </li>
           </ul>
+          <RouterLink
+            v-if="completionRequirementSummary.additional"
+            to="/student/requirements"
+            data-testid="overview-completion-requirements-more"
+            :aria-label="`View all ${completionRequirementSummary.count} incomplete required requirements`"
+            class="mt-2 inline-flex rounded font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+          >
+            +{{ completionRequirementSummary.additional }} more
+          </RouterLink>
           <p class="mt-4 text-xs leading-5 text-slate-500">Tasks and optional requirements do not block completion readiness.</p>
         </template>
       </section>

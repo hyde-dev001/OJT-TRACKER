@@ -60,7 +60,7 @@ The seeder is idempotent and creates one active student internship with 500 tota
 ## Current workflow
 
 - Registration uses Account Setup (first name, last name, optional suffix, email, password, and confirmation) followed by OJT Setup (required hours, OJT start date, required target end date, recurring work days, and expected hours per day). The account and internship are created together, and the student enters Overview after successful registration.
-- Overview: review backend-calculated rendered progress, required pace/status, up to five Needs Attention items, and completion readiness.
+- Overview: review backend-calculated rendered progress, required pace/status, up to five Needs Attention items, and completion readiness; download a personal-use A4 PDF summary of the current tracked progress.
 - Work Hours: configure total required OJT hours, add completed logs that count immediately, edit/delete logs, and view server-calculated rendered progress.
 - Tasks: add/edit/delete eligible tasks, start them, mark them completed, and page/filter larger lists.
 - Requirements: add/edit/delete personal requirements, keep notes, complete them, mark them incomplete again, and filter overdue items.
@@ -77,6 +77,7 @@ required requirements, not tasks or optional requirements, for readiness.
 Authenticated feature routes remain under `/api/student`:
 
 - `/overview` (backend-calculated student progress assistant)
+- `/overview/export` (download a personal progress-summary PDF; not official attendance or completion verification)
 - `/internship` (GET/PUT for the total required OJT hours)
 - `/work-logs` and `/work-logs/{id}` (completed on save; editable/deletable)
 - `/tasks` (paginated; `filter=all|to_do|in_progress|completed`), `/tasks/{id}/start`, and `/tasks/{id}/complete`
@@ -110,4 +111,5 @@ dialogs and controls, light/dark theme QA, paginated task and requirement
 lists, safe error states, deterministic demo data, automated tests, and
 browser smoke verification. Notifications, reports, analytics, AI, and
 official attendance or school/company completion certification remain out of
-scope.
+scope. The personal Overview progress-summary PDF is the only export exception;
+it is not official attendance or completion verification.
