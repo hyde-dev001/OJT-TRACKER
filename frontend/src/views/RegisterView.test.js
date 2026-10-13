@@ -32,6 +32,12 @@ describe('RegisterView', () => {
     expect(wrapper.get('[data-testid="auth-brand-label"]').classes()).toContain('auth-brand__label')
   })
 
+  it('links to the separate company registration flow', () => {
+    const wrapper = mount(RegisterView, { global: { plugins: [createPinia()] } })
+
+    expect(wrapper.get('[data-testid="company-registration-link"]').attributes('href')).toBe('/register/company')
+  })
+
   it('starts with account setup and the required password policy', () => {
     const wrapper = mount(RegisterView, { global: { plugins: [createPinia()] } })
     const password = wrapper.get('#register-password')

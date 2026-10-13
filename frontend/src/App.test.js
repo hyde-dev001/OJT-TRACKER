@@ -32,6 +32,15 @@ describe('App shell', () => {
     wrapper.unmount()
   })
 
+  it('hides application navigation on company registration', () => {
+    route.name = 'company-register'
+
+    const wrapper = mount(App)
+
+    expect(wrapper.find('header').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('does not expose public navigation while authentication is restoring', () => {
     const auth = useAuthStore()
     auth.bootstrapped = false
@@ -107,6 +116,7 @@ describe('App shell', () => {
     expect(wrapper.get('[data-testid="mobile-navigation-drawer"]').text()).toContain('Home')
     expect(wrapper.get('[data-testid="mobile-navigation-drawer"]').text()).toContain('About')
     expect(wrapper.get('[data-testid="mobile-navigation-drawer"]').text()).toContain('Create student account')
+    expect(wrapper.get('[data-testid="mobile-navigation-drawer"]').text()).toContain('Register company account')
 
     await wrapper.get('[data-testid="mobile-menu-close"]').trigger('click')
     expect(wrapper.find('[data-testid="mobile-navigation-drawer"]').exists()).toBe(false)
@@ -115,7 +125,7 @@ describe('App shell', () => {
 
   it('provides authenticated mobile navigation and a bottom workspace nav', async () => {
     const auth = useAuthStore()
-    auth.user = { id: 1, name: 'Student' }
+    auth.user = { id: 1, name: 'Student', role: 'student' }
     route.name = 'student-overview'
 
     const wrapper = mount(App)
@@ -127,6 +137,49 @@ describe('App shell', () => {
     expect(wrapper.get('[data-testid="mobile-bottom-nav-requirements"]').text()).toContain('Requirements')
     expect(wrapper.find('[data-testid="mobile-menu-trigger"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="mobile-navigation-drawer"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows company navigation without student destinations', () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2, name: 'Company', role: 'company' }
+    route.name = 'company-interns'
+
+    const wrapper = mount(App)
+
+    expect(wrapper.get('[data-testid="company-workspace-link"]').attributes('href')).toBe('/company/interns')
+    expect(wrapper.get('[data-testid="mobile-company-workspace-link"]').attributes('href')).toBe('/company/interns')
+    expect(wrapper.get('[data-testid="company-attendance-link"]').attributes('href')).toBe('/company/attendance')
+    expect(wrapper.get('[data-testid="mobile-company-attendance-link"]').attributes('href')).toBe('/company/attendance')
+    expect(wrapper.get('[data-testid="company-tasks-link"]').attributes('href')).toBe('/company/tasks')
+    expect(wrapper.get('[data-testid="mobile-company-tasks-link"]').attributes('href')).toBe('/company/tasks')
+    expect(wrapper.get('[data-testid="company-requirements-link"]').attributes('href')).toBe('/company/requirements')
+    expect(wrapper.get('[data-testid="mobile-company-requirements-link"]').attributes('href')).toBe('/company/requirements')
+    expect(wrapper.text()).toContain('Attendance')
+    expect(wrapper.text()).toContain('Tasks')
+    expect(wrapper.text()).toContain('Requirements')
+    expect(wrapper.text()).not.toContain('Work Hours')
+    wrapper.unmount()
+  })
+
+  it('shows intern work hours and account navigation without student destinations', () => {
+    const auth = useAuthStore()
+    auth.user = { id: 8, name: 'Intern', role: 'intern' }
+    route.name = 'intern-work-hours'
+
+    const wrapper = mount(App)
+
+    expect(wrapper.get('[data-testid="intern-work-hours-link"]').attributes('href')).toBe('/intern/work-hours')
+    expect(wrapper.get('[data-testid="mobile-intern-work-hours-link"]').attributes('href')).toBe('/intern/work-hours')
+    expect(wrapper.get('[data-testid="intern-workspace-link"]').attributes('href')).toBe('/intern/account')
+    expect(wrapper.get('[data-testid="mobile-intern-workspace-link"]').attributes('href')).toBe('/intern/account')
+    expect(wrapper.get('[data-testid="intern-tasks-link"]').attributes('href')).toBe('/intern/tasks')
+    expect(wrapper.get('[data-testid="mobile-intern-tasks-link"]').attributes('href')).toBe('/intern/tasks')
+    expect(wrapper.get('[data-testid="intern-requirements-link"]').attributes('href')).toBe('/intern/requirements')
+    expect(wrapper.get('[data-testid="mobile-intern-requirements-link"]').attributes('href')).toBe('/intern/requirements')
+    expect(wrapper.text()).toContain('Work Hours')
+    expect(wrapper.text()).toContain('Tasks')
+    expect(wrapper.text()).toContain('Requirements')
     wrapper.unmount()
   })
 

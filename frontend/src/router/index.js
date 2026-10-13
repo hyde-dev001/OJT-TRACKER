@@ -4,12 +4,22 @@ import AboutView from '../views/AboutView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import CompanyRegisterView from '../views/CompanyRegisterView.vue'
+import CompanyInternsView from '../views/company/CompanyInternsView.vue'
+import CompanyAttendanceView from '../views/company/CompanyAttendanceView.vue'
+import CompanyTasksView from '../views/company/CompanyTasksView.vue'
+import CompanyRequirementsView from '../views/company/CompanyRequirementsView.vue'
+import InternAccountView from '../views/intern/InternAccountView.vue'
+import InternWorkHoursView from '../views/intern/InternWorkHoursView.vue'
+import InternTasksView from '../views/intern/InternTasksView.vue'
+import InternRequirementsView from '../views/intern/InternRequirementsView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import OverviewView from '../views/student/OverviewView.vue'
 import StudentRequirementsView from '../views/student/RequirementsView.vue'
 import StudentTasksView from '../views/student/TasksView.vue'
 import WorkHoursView from '../views/student/WorkHoursView.vue'
 import StudentProfileView from '../views/student/ProfileView.vue'
+import { defaultWorkspacePath } from '../utils/accountNavigation'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,35 +37,84 @@ const router = createRouter({
     { path: '/about', name: 'about', component: AboutView },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/register', name: 'register', component: RegisterView },
+    { path: '/register/company', name: 'company-register', component: CompanyRegisterView },
+    {
+      path: '/company/interns',
+      name: 'company-interns',
+      component: CompanyInternsView,
+      meta: { requiresAuth: true, roles: ['company'] },
+    },
+    {
+      path: '/company/attendance',
+      name: 'company-attendance',
+      component: CompanyAttendanceView,
+      meta: { requiresAuth: true, roles: ['company'] },
+    },
+    {
+      path: '/company/tasks',
+      name: 'company-tasks',
+      component: CompanyTasksView,
+      meta: { requiresAuth: true, roles: ['company'] },
+    },
+    {
+      path: '/company/requirements',
+      name: 'company-requirements',
+      component: CompanyRequirementsView,
+      meta: { requiresAuth: true, roles: ['company'] },
+    },
+    {
+      path: '/intern/account',
+      name: 'intern-account',
+      component: InternAccountView,
+      meta: { requiresAuth: true, roles: ['intern'] },
+    },
+    {
+      path: '/intern/work-hours',
+      name: 'intern-work-hours',
+      component: InternWorkHoursView,
+      meta: { requiresAuth: true, roles: ['intern'] },
+    },
+    {
+      path: '/intern/tasks',
+      name: 'intern-tasks',
+      component: InternTasksView,
+      meta: { requiresAuth: true, roles: ['intern'] },
+    },
+    {
+      path: '/intern/requirements',
+      name: 'intern-requirements',
+      component: InternRequirementsView,
+      meta: { requiresAuth: true, roles: ['intern'] },
+    },
     {
       path: '/student/overview',
       name: 'student-overview',
       component: OverviewView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: ['student'] },
     },
     {
       path: '/student/work-hours',
       name: 'student-work-hours',
       component: WorkHoursView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: ['student'] },
     },
     {
       path: '/student/tasks',
       name: 'student-tasks',
       component: StudentTasksView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: ['student'] },
     },
     {
       path: '/student/requirements',
       name: 'student-requirements',
       component: StudentRequirementsView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: ['student'] },
     },
     {
       path: '/student/profile',
       name: 'student-profile',
       component: StudentProfileView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: ['student'] },
     },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
   ],
@@ -68,16 +127,23 @@ router.beforeEach(async (to) => {
     await auth.restore()
   }
 
+  const role = auth.user?.role ?? 'student'
+  const workspace = defaultWorkspacePath(role)
+
   if (to.name === 'home' && auth.isAuthenticated) {
-    return { name: 'student-overview' }
+    return workspace
   }
 
-  if (['login', 'register'].includes(to.name) && auth.isAuthenticated) {
-    return '/student/overview'
+  if (['login', 'register', 'company-register'].includes(to.name) && auth.isAuthenticated) {
+    return workspace
   }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.roles?.length && !to.meta.roles.includes(role)) {
+    return workspace
   }
 })
 

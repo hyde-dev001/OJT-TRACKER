@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterCompanyRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Models\User;
@@ -50,6 +51,33 @@ class AuthController extends Controller
                 'expected_daily_minutes' => (int) round(((float) $data['expected_hours_per_day']) * 60),
                 'status' => 'active',
             ]);
+
+            return $user;
+        });
+
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+
+        return response()->json(['user' => $this->userPayload($user)], 201);
+    }
+
+    public function registerCompany(RegisterCompanyRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $nameAttributes = $this->nameAttributes($data);
+
+        $user = DB::transaction(function () use ($data, $nameAttributes): User {
+            $user = new User();
+            $user->fill(array_merge($nameAttributes, [
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'email_verified_at' => now(),
+            ]));
+            $user->role = 'company';
+            $user->must_change_password = false;
+            $user->save();
+
+            $user->company()->create(['name' => $data['company_name']]);
 
             return $user;
         });
@@ -164,7 +192,7 @@ class AuthController extends Controller
         ];
     }
 
-    /** @return array{id: int, name: string, first_name: ?string, last_name: ?string, suffix: ?string, email: string} */
+    /** @return array{id: int, name: string, first_name: ?string, last_name: ?string, suffix: ?string, email: string, role: string, must_change_password: bool} */
     private function userPayload(User $user): array
     {
         return [
@@ -174,6 +202,8 @@ class AuthController extends Controller
             'last_name' => $user->last_name,
             'suffix' => $user->suffix,
             'email' => $user->email,
+            'role' => $user->role,
+            'must_change_password' => $user->must_change_password,
         ];
     }
 }

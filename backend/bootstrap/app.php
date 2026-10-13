@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountRole;
+use App\Http\Middleware\EnsureInternPasswordChanged;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
+        $middleware->alias([
+            'account-role' => EnsureAccountRole::class,
+            'intern.password-changed' => EnsureInternPasswordChanged::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

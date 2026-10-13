@@ -13,6 +13,7 @@ class Internship extends Model
 
     protected $fillable = [
         'student_id',
+        'company_id',
         'required_minutes',
         'start_date',
         'end_date',
@@ -37,6 +38,11 @@ class Internship extends Model
         return $this->belongsTo(User::class, 'student_id');
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function workLogs(): HasMany
     {
         return $this->hasMany(WorkLog::class);
@@ -52,13 +58,27 @@ class Internship extends Model
         return $this->hasMany(Requirement::class);
     }
 
-    /** @return array<string, int|float> */
+    /** @return array<string, int|float|null> */
     public function progressSummary(): array
     {
         $completedMinutes = (int) $this->workLogs()
             ->where('status', 'completed')
             ->sum('rendered_minutes');
-        $requiredMinutes = (int) $this->required_minutes;
+        $requiredMinutes = $this->required_minutes;
+
+        if ($requiredMinutes === null) {
+            return [
+                'completed_minutes' => $completedMinutes,
+                'completed_hours' => round($completedMinutes / 60, 2),
+                'required_minutes' => null,
+                'required_hours' => null,
+                'remaining_minutes' => null,
+                'remaining_hours' => null,
+                'percentage' => null,
+            ];
+        }
+
+        $requiredMinutes = (int) $requiredMinutes;
         $remainingMinutes = max(0, $requiredMinutes - $completedMinutes);
         $percentage = $requiredMinutes > 0
             ? min(100, (int) round(($completedMinutes / $requiredMinutes) * 100))

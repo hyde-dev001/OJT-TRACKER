@@ -16,7 +16,7 @@ const router = useRouter()
 const logoutDialogOpen = ref(false)
 const logoutBusy = ref(false)
 const mobileMenuOpen = ref(false)
-const isAuthScreen = computed(() => ['login', 'register'].includes(route.name))
+const isAuthScreen = computed(() => ['login', 'register', 'company-register'].includes(route.name))
 
 watch(() => route.name, () => {
   mobileMenuOpen.value = false
@@ -67,10 +67,24 @@ const themeLabel = computed(() => theme.value === 'dark' ? 'Switch to light mode
         </div>
         <div v-if="authStore.isAuthenticated" class="app-header-actions app-header-actions--authenticated flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm font-semibold">
           <div class="desktop-workspace-nav flex min-w-0 flex-1 flex-wrap justify-end gap-1" aria-label="Workspace navigation">
-            <RouterLink to="/student/overview" active-class="app-nav-link--active" class="app-nav-link">Overview</RouterLink>
-            <RouterLink to="/student/work-hours" active-class="app-nav-link--active" class="app-nav-link">Work Hours</RouterLink>
-            <RouterLink to="/student/tasks" active-class="app-nav-link--active" class="app-nav-link">Tasks</RouterLink>
-            <RouterLink to="/student/requirements" active-class="app-nav-link--active" class="app-nav-link">Requirements</RouterLink>
+            <template v-if="authStore.user?.role === 'company'">
+              <RouterLink to="/company/interns" active-class="app-nav-link--active" class="app-nav-link" data-testid="company-workspace-link">Interns</RouterLink>
+              <RouterLink to="/company/attendance" active-class="app-nav-link--active" class="app-nav-link" data-testid="company-attendance-link">Attendance</RouterLink>
+              <RouterLink to="/company/tasks" active-class="app-nav-link--active" class="app-nav-link" data-testid="company-tasks-link">Tasks</RouterLink>
+              <RouterLink to="/company/requirements" active-class="app-nav-link--active" class="app-nav-link" data-testid="company-requirements-link">Requirements</RouterLink>
+            </template>
+            <template v-else-if="authStore.user?.role === 'intern'">
+              <RouterLink to="/intern/account" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-workspace-link">OJT account</RouterLink>
+              <RouterLink to="/intern/work-hours" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-work-hours-link">Work Hours</RouterLink>
+              <RouterLink to="/intern/tasks" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-tasks-link">Tasks</RouterLink>
+              <RouterLink to="/intern/requirements" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-requirements-link">Requirements</RouterLink>
+            </template>
+            <template v-else>
+              <RouterLink to="/student/overview" active-class="app-nav-link--active" class="app-nav-link">Overview</RouterLink>
+              <RouterLink to="/student/work-hours" active-class="app-nav-link--active" class="app-nav-link">Work Hours</RouterLink>
+              <RouterLink to="/student/tasks" active-class="app-nav-link--active" class="app-nav-link">Tasks</RouterLink>
+              <RouterLink to="/student/requirements" active-class="app-nav-link--active" class="app-nav-link">Requirements</RouterLink>
+            </template>
           </div>
           <button type="button" class="theme-toggle" data-testid="theme-toggle" :aria-label="themeLabel" :title="themeLabel" @click="toggleTheme">
             <svg v-if="theme === 'dark'" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
@@ -102,28 +116,57 @@ const themeLabel = computed(() => theme.value === 'dark' ? 'Switch to light mode
       </Transition>
     </RouterView>
 
-    <nav v-if="authStore.isAuthenticated && !isAuthScreen" class="mobile-bottom-nav" data-testid="mobile-bottom-nav" aria-label="Student workspace navigation">
-      <RouterLink to="/student/overview" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-overview">
-        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5" /><path d="M5.5 9.5V21h13V9.5M9.5 21v-6h5v6" /></svg>
-        <span>Overview</span>
+    <nav v-if="authStore.isAuthenticated && !isAuthScreen" class="mobile-bottom-nav" data-testid="mobile-bottom-nav" :aria-label="authStore.user?.role === 'student' ? 'Student workspace navigation' : 'Workspace navigation'">
+      <RouterLink v-if="authStore.user?.role === 'company'" to="/company/interns" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-company-workspace-link">
+        <span>Interns</span>
       </RouterLink>
-      <RouterLink to="/student/work-hours" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-work-hours">
-        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>
-        <span>Work Hours</span>
+      <RouterLink v-if="authStore.user?.role === 'company'" to="/company/attendance" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-company-attendance-link">
+        <span>Attendance</span>
       </RouterLink>
-      <RouterLink to="/student/tasks" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-tasks">
-        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6h11M9 12h11M9 18h11" /><path d="m4 6 1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17" /></svg>
+      <RouterLink v-if="authStore.user?.role === 'company'" to="/company/tasks" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-company-tasks-link">
         <span>Tasks</span>
       </RouterLink>
-      <RouterLink to="/student/requirements" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-requirements">
-        <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h4M10 13h6M10 17h6" /></svg>
+      <RouterLink v-if="authStore.user?.role === 'company'" to="/company/requirements" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-company-requirements-link">
         <span>Requirements</span>
       </RouterLink>
+      <template v-else-if="authStore.user?.role === 'intern'">
+        <RouterLink to="/intern/account" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-intern-workspace-link">
+          <span>OJT account</span>
+        </RouterLink>
+        <RouterLink to="/intern/work-hours" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-intern-work-hours-link">
+          <span>Work Hours</span>
+        </RouterLink>
+        <RouterLink to="/intern/tasks" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-intern-tasks-link">
+          <span>Tasks</span>
+        </RouterLink>
+        <RouterLink to="/intern/requirements" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-intern-requirements-link">
+          <span>Requirements</span>
+        </RouterLink>
+      </template>
+      <template v-else>
+        <RouterLink to="/student/overview" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-overview">
+          <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5" /><path d="M5.5 9.5V21h13V9.5M9.5 21v-6h5v6" /></svg>
+          <span>Overview</span>
+        </RouterLink>
+        <RouterLink to="/student/work-hours" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-work-hours">
+          <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>
+          <span>Work Hours</span>
+        </RouterLink>
+        <RouterLink to="/student/tasks" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-tasks">
+          <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6h11M9 12h11M9 18h11" /><path d="m4 6 1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17" /></svg>
+          <span>Tasks</span>
+        </RouterLink>
+        <RouterLink to="/student/requirements" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-requirements">
+          <svg class="mobile-bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h4M10 13h6M10 17h6" /></svg>
+          <span>Requirements</span>
+        </RouterLink>
+      </template>
     </nav>
 
     <MobileNavigationDrawer
       :open="mobileMenuOpen"
       :authenticated="authStore.isAuthenticated"
+      :user="authStore.user"
       @close="mobileMenuOpen = false"
     />
 

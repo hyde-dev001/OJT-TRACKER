@@ -16,6 +16,11 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $attributes = [
+        'role' => 'student',
+        'must_change_password' => false,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -50,7 +55,13 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
         ];
+    }
+
+    public function company(): HasOne
+    {
+        return $this->hasOne(Company::class, 'account_holder_id');
     }
 
     public function studentInternships(): HasMany

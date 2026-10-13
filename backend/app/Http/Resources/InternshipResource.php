@@ -13,7 +13,9 @@ class InternshipResource extends JsonResource
         return [
             'id' => $this->id,
             'required_minutes' => $this->required_minutes,
-            'required_hours' => round($this->required_minutes / 60, 2),
+            'required_hours' => $this->required_minutes === null
+                ? null
+                : round($this->required_minutes / 60, 2),
             'start_date' => $this->start_date?->toDateString(),
             'end_date' => $this->end_date?->toDateString(),
             'work_days' => $this->work_days ?? [],

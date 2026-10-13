@@ -50,16 +50,41 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(details) {
+  async function submitRegistration(path, details) {
     loading.value = true
     error.value = null
 
     try {
       await ensureCsrfCookie()
-      const response = await api.post('/register', details)
+      const response = await api.post(path, details)
       user.value = response.data.user
       bootstrapped.value = true
 
+      return user.value
+    } catch (requestError) {
+      error.value = apiErrorMessage(requestError)
+      throw requestError
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function register(details) {
+    return submitRegistration('/register', details)
+  }
+
+  function registerCompany(details) {
+    return submitRegistration('/company/register', details)
+  }
+
+  async function changeInternPassword(details) {
+    loading.value = true
+    error.value = null
+
+    try {
+      await ensureCsrfCookie()
+      const response = await api.put('/intern/password', details)
+      user.value = { ...user.value, ...response.data.user }
       return user.value
     } catch (requestError) {
       error.value = apiErrorMessage(requestError)
@@ -119,6 +144,8 @@ export const useAuthStore = defineStore('auth', () => {
     restore,
     login,
     register,
+    registerCompany,
+    changeInternPassword,
     updateProfile,
     logout,
     clearSession,

@@ -40,7 +40,7 @@ describe('LoginView', () => {
     expect(wrapper.get('[data-testid="auth-brand-label"]').classes()).toContain('auth-brand__label')
   })
 
-  it('logs in and always enters the student application', async () => {
+  it('logs in a student and enters the student application', async () => {
     ensureCsrfCookie.mockResolvedValue({})
     api.post.mockResolvedValue({
       data: { user: { id: 1, name: 'Student', email: 'student@example.com' } },
@@ -55,6 +55,40 @@ describe('LoginView', () => {
 
     expect(wrapper.get('label[for="email"]').text()).toContain('Email')
     expect(routerPush).toHaveBeenCalledWith('/student/overview')
+  })
+
+  it.each([
+    ['company', '/company/interns'],
+    ['intern', '/intern/account'],
+  ])('routes a %s account to its own workspace', async (role, destination) => {
+    ensureCsrfCookie.mockResolvedValue({})
+    api.post.mockResolvedValue({
+      data: { user: { id: 2, name: 'Account', email: `${role}@example.com`, role } },
+    })
+
+    const wrapper = mount(LoginView, { global: { plugins: [createPinia()] } })
+    await wrapper.get('input[type="email"]').setValue(`${role}@example.com`)
+    await wrapper.get('input[type="password"]').setValue('secret')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(routerPush).toHaveBeenCalledWith(destination)
+  })
+
+  it('does not send a company account to a student deep link', async () => {
+    ensureCsrfCookie.mockResolvedValue({})
+    api.post.mockResolvedValue({
+      data: { user: { id: 3, name: 'Company', email: 'company@example.com', role: 'company' } },
+    })
+    route.query = { redirect: '/student/tasks' }
+
+    const wrapper = mount(LoginView, { global: { plugins: [createPinia()] } })
+    await wrapper.get('input[type="email"]').setValue('company@example.com')
+    await wrapper.get('input[type="password"]').setValue('secret')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(routerPush).toHaveBeenCalledWith('/company/interns')
   })
 
   it('preserves only internal student deep links after login', async () => {

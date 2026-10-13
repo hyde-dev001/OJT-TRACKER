@@ -10,6 +10,8 @@ class Task extends Model
 {
     use HasFactory;
 
+    protected $attributes = ['submission_status' => 'not_submitted'];
+
     protected $fillable = [
         'internship_id',
         'title',
@@ -17,13 +19,23 @@ class Task extends Model
         'due_date',
         'status',
         'completed_at',
+        'submission_status',
+        'proof_path',
+        'submission_comment',
+        'review_comment',
+        'submitted_at',
+        'reviewed_at',
     ];
+
+    protected $hidden = ['proof_path'];
 
     protected function casts(): array
     {
         return [
             'due_date' => 'date',
             'completed_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
     }
 

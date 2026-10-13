@@ -218,7 +218,7 @@ class WorkLogTest extends TestCase
 
         $this->studentRequest($student)
             ->putJson("/api/student/work-logs/{$workLog->id}", $this->payload([
-                'work_date' => '2026-09-11',
+                'work_date' => $internship->start_date->copy()->addDay()->toDateString(),
                 'accomplishment_summary' => 'Updated detail.',
             ]))
             ->assertOk()
