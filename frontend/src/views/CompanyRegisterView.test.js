@@ -69,4 +69,26 @@ describe('CompanyRegisterView', () => {
     expect(wrapper.get('[data-testid="company-email-error"]').text()).toContain('An account already exists')
     expect(wrapper.get('#company-email').element.value).toBe('owner@northwind.example')
   })
+
+  it('shows and hides the company password fields independently', async () => {
+    const wrapper = mount(CompanyRegisterView, { global: { plugins: [createPinia()] } })
+
+    const passwordToggle = wrapper.find('[data-testid="toggle-company-password"]')
+    const confirmationToggle = wrapper.find('[data-testid="toggle-company-password-confirmation"]')
+
+    expect(passwordToggle.exists()).toBe(true)
+    expect(confirmationToggle.exists()).toBe(true)
+    expect(wrapper.get('#company-password').attributes('type')).toBe('password')
+    expect(wrapper.get('#company-password-confirmation').attributes('type')).toBe('password')
+
+    await passwordToggle.trigger('click')
+    expect(wrapper.get('#company-password').attributes('type')).toBe('text')
+    expect(wrapper.get('#company-password-confirmation').attributes('type')).toBe('password')
+
+    await confirmationToggle.trigger('click')
+    expect(wrapper.get('#company-password-confirmation').attributes('type')).toBe('text')
+
+    await passwordToggle.trigger('click')
+    expect(wrapper.get('#company-password').attributes('type')).toBe('password')
+  })
 })

@@ -18,6 +18,8 @@ const form = reactive({
 })
 const errors = ref({})
 const formError = ref('')
+const showPassword = ref(false)
+const showPasswordConfirmation = ref(false)
 
 const submit = async () => {
   errors.value = {}
@@ -82,7 +84,12 @@ const submit = async () => {
 
         <div>
           <label for="company-password" class="block text-sm font-semibold text-slate-800">Password</label>
-          <input id="company-password" v-model="form.password" type="password" autocomplete="new-password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" aria-describedby="company-password-help company-register-password-rules" :aria-invalid="Boolean(errors.password)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <div class="relative mt-2">
+            <input id="company-password" v-model="form.password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" aria-describedby="company-password-help company-register-password-rules" :aria-invalid="Boolean(errors.password)" class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-20 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <button type="button" data-testid="toggle-company-password" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-950" :aria-label="showPassword ? 'Hide password' : 'Show password'" :aria-pressed="showPassword" @click="showPassword = !showPassword">
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
+          </div>
           <p id="company-password-help" class="mt-1 text-xs leading-5 text-slate-500">Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</p>
           <PasswordRequirements :password="form.password" id-prefix="company-register" />
           <p v-if="errors.password" data-testid="company-password-error" class="mt-1 text-sm text-red-700" role="alert">{{ errors.password[0] }}</p>
@@ -90,7 +97,12 @@ const submit = async () => {
 
         <div>
           <label for="company-password-confirmation" class="block text-sm font-semibold text-slate-800">Confirm password</label>
-          <input id="company-password-confirmation" v-model="form.password_confirmation" type="password" autocomplete="new-password" required minlength="12" :aria-invalid="Boolean(errors.password_confirmation)" :aria-describedby="errors.password_confirmation ? 'company-password-confirmation-error' : undefined" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <div class="relative mt-2">
+            <input id="company-password-confirmation" v-model="form.password_confirmation" :type="showPasswordConfirmation ? 'text' : 'password'" autocomplete="new-password" required minlength="12" :aria-invalid="Boolean(errors.password_confirmation)" :aria-describedby="errors.password_confirmation ? 'company-password-confirmation-error' : undefined" class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-20 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <button type="button" data-testid="toggle-company-password-confirmation" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-950" :aria-label="showPasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'" :aria-pressed="showPasswordConfirmation" @click="showPasswordConfirmation = !showPasswordConfirmation">
+              {{ showPasswordConfirmation ? 'Hide' : 'Show' }}
+            </button>
+          </div>
           <p v-if="errors.password_confirmation" id="company-password-confirmation-error" class="mt-1 text-sm text-red-700" role="alert">{{ errors.password_confirmation[0] }}</p>
         </div>
 

@@ -70,6 +70,28 @@ describe('CompanyInternsView', () => {
     expect(wrapper.text()).toContain('No intern accounts yet')
   })
 
+  it('shows and hides the intern creation passwords independently', async () => {
+    listCompanyInterns.mockResolvedValueOnce([])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const passwordToggle = wrapper.get('[data-testid="toggle-new-intern-password"]')
+    const confirmationToggle = wrapper.get('[data-testid="toggle-new-intern-password-confirmation"]')
+
+    expect(wrapper.get('#new-intern-password').attributes('type')).toBe('password')
+    expect(wrapper.get('#new-intern-password-confirmation').attributes('type')).toBe('password')
+
+    await passwordToggle.trigger('click')
+    expect(wrapper.get('#new-intern-password').attributes('type')).toBe('text')
+    expect(wrapper.get('#new-intern-password-confirmation').attributes('type')).toBe('password')
+
+    await confirmationToggle.trigger('click')
+    expect(wrapper.get('#new-intern-password-confirmation').attributes('type')).toBe('text')
+
+    await passwordToggle.trigger('click')
+    expect(wrapper.get('#new-intern-password').attributes('type')).toBe('password')
+  })
+
   it('creates an intern, displays its setup state, and clears the temporary password', async () => {
     listCompanyInterns.mockResolvedValueOnce([])
     createCompanyIntern.mockResolvedValueOnce(intern)

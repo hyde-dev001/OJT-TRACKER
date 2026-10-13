@@ -40,6 +40,8 @@ const placementForm = reactive({
   expected_hours_per_day: 8,
 })
 const resetForm = reactive({ password: '', password_confirmation: '' })
+const showNewInternPassword = ref(false)
+const showNewInternPasswordConfirmation = ref(false)
 const interns = ref([])
 const loading = ref(true)
 const loadError = ref('')
@@ -355,13 +357,23 @@ onMounted(loadInterns)
         <div class="grid gap-5 sm:grid-cols-2">
           <div>
             <label for="new-intern-password" class="block text-sm font-semibold text-slate-800">Temporary password</label>
-            <input id="new-intern-password" v-model="newInternForm.password" type="password" autocomplete="new-password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" aria-describedby="new-intern-password-rules" :aria-invalid="Boolean(createErrors.password)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <div class="relative mt-2">
+              <input id="new-intern-password" v-model="newInternForm.password" :type="showNewInternPassword ? 'text' : 'password'" autocomplete="new-password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" aria-describedby="new-intern-password-rules" :aria-invalid="Boolean(createErrors.password)" class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-20 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+              <button type="button" data-testid="toggle-new-intern-password" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-950" :aria-label="showNewInternPassword ? 'Hide temporary password' : 'Show temporary password'" :aria-pressed="showNewInternPassword" @click="showNewInternPassword = !showNewInternPassword">
+                {{ showNewInternPassword ? 'Hide' : 'Show' }}
+              </button>
+            </div>
             <PasswordRequirements :password="newInternForm.password" id-prefix="new-intern" />
             <p v-if="createErrors.password" class="mt-1 text-sm text-red-700" role="alert">{{ createErrors.password[0] }}</p>
           </div>
           <div>
             <label for="new-intern-password-confirmation" class="block text-sm font-semibold text-slate-800">Confirm temporary password</label>
-            <input id="new-intern-password-confirmation" v-model="newInternForm.password_confirmation" type="password" autocomplete="new-password" required minlength="12" :aria-invalid="Boolean(createErrors.password_confirmation)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <div class="relative mt-2">
+              <input id="new-intern-password-confirmation" v-model="newInternForm.password_confirmation" :type="showNewInternPasswordConfirmation ? 'text' : 'password'" autocomplete="new-password" required minlength="12" :aria-invalid="Boolean(createErrors.password_confirmation)" class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-20 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+              <button type="button" data-testid="toggle-new-intern-password-confirmation" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-950" :aria-label="showNewInternPasswordConfirmation ? 'Hide temporary password confirmation' : 'Show temporary password confirmation'" :aria-pressed="showNewInternPasswordConfirmation" @click="showNewInternPasswordConfirmation = !showNewInternPasswordConfirmation">
+                {{ showNewInternPasswordConfirmation ? 'Hide' : 'Show' }}
+              </button>
+            </div>
             <p v-if="createErrors.password_confirmation" class="mt-1 text-sm text-red-700" role="alert">{{ createErrors.password_confirmation[0] }}</p>
           </div>
         </div>
