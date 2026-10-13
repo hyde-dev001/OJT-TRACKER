@@ -162,7 +162,7 @@ describe('App shell', () => {
     wrapper.unmount()
   })
 
-  it('shows intern work hours and account navigation without student destinations', () => {
+  it('shows intern overview and work navigation without an account link in the navbar', () => {
     const auth = useAuthStore()
     auth.user = { id: 8, name: 'Intern', role: 'intern' }
     route.name = 'intern-work-hours'
@@ -171,8 +171,9 @@ describe('App shell', () => {
 
     expect(wrapper.get('[data-testid="intern-work-hours-link"]').attributes('href')).toBe('/intern/work-hours')
     expect(wrapper.get('[data-testid="mobile-intern-work-hours-link"]').attributes('href')).toBe('/intern/work-hours')
-    expect(wrapper.get('[data-testid="intern-workspace-link"]').attributes('href')).toBe('/intern/account')
-    expect(wrapper.get('[data-testid="mobile-intern-workspace-link"]').attributes('href')).toBe('/intern/account')
+    expect(wrapper.get('[data-testid="intern-overview-link"]').attributes('href')).toBe('/intern/overview')
+    expect(wrapper.get('[data-testid="mobile-bottom-nav-intern-overview"]').attributes('href')).toBe('/intern/overview')
+    expect(wrapper.find('[data-testid="intern-workspace-link"]').exists()).toBe(false)
     expect(wrapper.get('[data-testid="intern-tasks-link"]').attributes('href')).toBe('/intern/tasks')
     expect(wrapper.get('[data-testid="mobile-intern-tasks-link"]').attributes('href')).toBe('/intern/tasks')
     expect(wrapper.get('[data-testid="intern-requirements-link"]').attributes('href')).toBe('/intern/requirements')
@@ -180,6 +181,7 @@ describe('App shell', () => {
     expect(wrapper.text()).toContain('Work Hours')
     expect(wrapper.text()).toContain('Tasks')
     expect(wrapper.text()).toContain('Requirements')
+    expect(wrapper.text()).toContain('Overview')
     wrapper.unmount()
   })
 

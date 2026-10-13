@@ -5,9 +5,12 @@ import EmptyState from '../../components/EmptyState.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import ProgressBar from '../../components/ProgressBar.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
-import { exportStudentSummary, getStudentOverview } from '../../services/ojt'
+import { exportStudentSummary, getInternOverview, getStudentOverview } from '../../services/ojt'
 import { formatDate, formatDuration } from '../../utils/formatters'
 
+const props = defineProps({ accountRole: { type: String, default: 'student' } })
+const workspacePrefix = computed(() => props.accountRole === 'intern' ? '/intern' : '/student')
+const accountSetupPath = computed(() => props.accountRole === 'intern' ? '/intern/account' : '/student/profile')
 const overview = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -28,7 +31,7 @@ const load = async () => {
   error.value = ''
 
   try {
-    overview.value = await getStudentOverview()
+    overview.value = props.accountRole === 'intern' ? await getInternOverview() : await getStudentOverview()
   } catch (requestError) {
     overview.value = null
     if (requestError?.response?.status === 404) return
@@ -98,7 +101,9 @@ const paceDescription = (status) => {
     at_risk: 'Your current pace is above your expected OJT schedule.',
     complete: 'You have reached the required tracked OJT hours.',
     deadline_passed: 'Your target end date has passed while tracked hours are still remaining.',
-    pace_unavailable: 'Your OJT work schedule is incomplete, so your required pace cannot be calculated yet.',
+    pace_unavailable: overview.value?.progress?.required_minutes == null
+      ? 'Enter your required OJT hours to see your progress and required pace.'
+      : 'Your OJT work schedule is incomplete, so your required pace cannot be calculated yet.',
   }
 
   return descriptions[status] ?? 'Your pace is based on your saved work logs and configured schedule.'
@@ -111,6 +116,7 @@ const attentionLabel = (item) => ({
   due_today: 'Due today',
   due_soon: 'Due soon',
   no_due_date: 'Required',
+  required_hours_not_set: 'Setup needed',
 }[item.reason] ?? 'Needs attention')
 
 const attentionTone = (item) => ({
@@ -141,7 +147,7 @@ onMounted(load)
 <template>
   <main data-testid="student-overview" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Overview" description="See your current OJT status, priorities, and completion readiness.">
-      <template v-if="overview && !loading && !error" #action>
+      <template v-if="props.accountRole === 'student' && overview && !loading && !error" #action>
         <div class="flex flex-col items-start gap-2">
           <button
             type="button"
@@ -193,17 +199,19 @@ onMounted(load)
             <h2 id="overview-progress-title" class="mt-2 text-xl font-semibold text-slate-950">Rendered hours</h2>
           </div>
           <div data-testid="overview-progress-meta" class="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-right">
-            <p data-testid="overview-rendered-hours" class="text-2xl font-semibold tracking-tight text-slate-950">{{ displayMinutes(overview.progress.rendered_minutes) }} of {{ displayMinutes(overview.progress.required_minutes) }} completed</p>
-            <p data-testid="overview-progress-percentage" class="text-sm font-semibold text-slate-600">{{ overview.progress.percentage }}%</p>
+            <p data-testid="overview-rendered-hours" class="text-2xl font-semibold tracking-tight text-slate-950">{{ displayMinutes(overview.progress.rendered_minutes) }}{{ overview.progress.required_minutes == null ? ' completed' : ` of ${displayMinutes(overview.progress.required_minutes)} completed` }}</p>
+            <p v-if="overview.progress.percentage != null" data-testid="overview-progress-percentage" class="text-sm font-semibold text-slate-600">{{ overview.progress.percentage }}%</p>
           </div>
         </div>
         <div class="mt-5">
           <ProgressBar
+            v-if="overview.progress.percentage != null"
             :percentage="overview.progress.percentage"
             :completed-label="`${displayMinutes(overview.progress.rendered_minutes)} rendered`"
             :required-label="`${displayMinutes(overview.progress.required_minutes)} required`"
             :remaining-label="`${displayMinutes(overview.progress.remaining_minutes)} remaining`"
           />
+          <p v-else class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Enter your required OJT hours to see your progress percentage.</p>
         </div>
       </section>
 
@@ -220,7 +228,7 @@ onMounted(load)
         <div v-if="overview.pace.status === 'pace_unavailable'" data-testid="overview-pace-unavailable" class="mt-5 rounded-lg border border-slate-300 bg-white p-4">
           <p class="text-sm font-semibold text-slate-900">{{ paceDescription(overview.pace.status) }}</p>
           <p class="mt-2 text-sm text-slate-600">Review your OJT setup before relying on pace guidance.</p>
-          <RouterLink to="/student/profile" class="mt-3 inline-flex font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">Review OJT setup <span aria-hidden="true">→</span></RouterLink>
+          <RouterLink :to="accountSetupPath" class="mt-3 inline-flex font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">Review OJT setup <span aria-hidden="true">→</span></RouterLink>
         </div>
 
         <div v-else class="mt-5 grid gap-3 sm:grid-cols-[1.4fr_1fr_1fr]">
@@ -299,13 +307,13 @@ onMounted(load)
               data-testid="overview-completion-requirement"
               class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
             >
-              <RouterLink to="/student/requirements" class="min-w-0 break-words font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">{{ requirement.title }}</RouterLink>
+              <RouterLink :to="`${workspacePrefix}/requirements`" class="min-w-0 break-words font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">{{ requirement.title }}</RouterLink>
               <span v-if="requirement.due_date" class="shrink-0 text-sm text-slate-600">Due {{ formatDate(requirement.due_date) }}</span>
             </li>
           </ul>
           <RouterLink
             v-if="completionRequirementSummary.additional"
-            to="/student/requirements"
+            :to="`${workspacePrefix}/requirements`"
             data-testid="overview-completion-requirements-more"
             :aria-label="`View all ${completionRequirementSummary.count} incomplete required requirements`"
             class="mt-2 inline-flex rounded font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950 hover:decoration-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"

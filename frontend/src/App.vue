@@ -74,7 +74,7 @@ const themeLabel = computed(() => theme.value === 'dark' ? 'Switch to light mode
               <RouterLink to="/company/requirements" active-class="app-nav-link--active" class="app-nav-link" data-testid="company-requirements-link">Requirements</RouterLink>
             </template>
             <template v-else-if="authStore.user?.role === 'intern'">
-              <RouterLink to="/intern/account" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-workspace-link">OJT account</RouterLink>
+              <RouterLink to="/intern/overview" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-overview-link">Overview</RouterLink>
               <RouterLink to="/intern/work-hours" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-work-hours-link">Work Hours</RouterLink>
               <RouterLink to="/intern/tasks" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-tasks-link">Tasks</RouterLink>
               <RouterLink to="/intern/requirements" active-class="app-nav-link--active" class="app-nav-link" data-testid="intern-requirements-link">Requirements</RouterLink>
@@ -130,8 +130,8 @@ const themeLabel = computed(() => theme.value === 'dark' ? 'Switch to light mode
         <span>Requirements</span>
       </RouterLink>
       <template v-else-if="authStore.user?.role === 'intern'">
-        <RouterLink to="/intern/account" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-intern-workspace-link">
-          <span>OJT account</span>
+        <RouterLink to="/intern/overview" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-bottom-nav-intern-overview">
+          <span>Overview</span>
         </RouterLink>
         <RouterLink to="/intern/work-hours" active-class="app-nav-link--active" class="mobile-bottom-nav__link" data-testid="mobile-intern-work-hours-link">
           <span>Work Hours</span>

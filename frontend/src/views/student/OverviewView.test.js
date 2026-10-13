@@ -5,6 +5,7 @@ import OverviewView from './OverviewView.vue'
 import * as ojt from '../../services/ojt'
 
 vi.mock('../../services/ojt', () => ({
+  getInternOverview: vi.fn(),
   getStudentOverview: vi.fn(),
   exportStudentSummary: vi.fn(),
 }))
@@ -108,6 +109,25 @@ describe('student OverviewView', () => {
     expect(wrapper.get('[data-testid="overview-completion"]').text()).toContain('Medical clearance')
     expect(wrapper.get('[data-testid="overview-completion"]').text()).not.toContain('or a required item')
     expect(wrapper.text()).not.toContain('Work logs')
+  })
+
+  it('shows the same attention overview for interns and guides unset OJT targets to setup', async () => {
+    const data = overview()
+    data.progress = { required_minutes: null, rendered_minutes: 180, remaining_minutes: null, percentage: null }
+    data.pace = { status: 'pace_unavailable', remaining_scheduled_days: 0, required_daily_minutes: null, expected_daily_minutes: 480 }
+    data.attention.items = [{ type: 'setup', id: null, title: 'Enter your required OJT hours.', reason: 'required_hours_not_set', priority: 1, href: '/intern/account' }]
+    data.completion = { ready: false, remaining_minutes: null, incomplete_required_requirements: [], blockers: ['required_hours_not_set'] }
+    ojt.getInternOverview.mockResolvedValue(data)
+
+    const wrapper = mount(OverviewView, { props: { accountRole: 'intern' }, global })
+    await flushPromises()
+
+    expect(ojt.getInternOverview).toHaveBeenCalledOnce()
+    expect(wrapper.get('[data-testid="overview-attention-item"] a').attributes('href')).toBe('/intern/account')
+    expect(wrapper.get('[data-testid="overview-attention-item"]').text()).toContain('required OJT hours')
+    expect(wrapper.get('[data-testid="overview-pace-unavailable"] a').attributes('href')).toBe('/intern/account')
+    expect(wrapper.find('[data-testid="overview-progress-percentage"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="overview-export"]').exists()).toBe(false)
   })
 
   it('keeps long completion blocker lists compact and links to the full list', async () => {

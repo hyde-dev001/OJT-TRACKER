@@ -6,10 +6,12 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import CompanyRegisterView from '../views/CompanyRegisterView.vue'
 import CompanyInternsView from '../views/company/CompanyInternsView.vue'
+import CompanyAccountView from '../views/company/CompanyAccountView.vue'
 import CompanyAttendanceView from '../views/company/CompanyAttendanceView.vue'
 import CompanyTasksView from '../views/company/CompanyTasksView.vue'
 import CompanyRequirementsView from '../views/company/CompanyRequirementsView.vue'
 import InternAccountView from '../views/intern/InternAccountView.vue'
+import InternOverviewView from '../views/student/OverviewView.vue'
 import InternWorkHoursView from '../views/intern/InternWorkHoursView.vue'
 import InternTasksView from '../views/intern/InternTasksView.vue'
 import InternRequirementsView from '../views/intern/InternRequirementsView.vue'
@@ -39,6 +41,12 @@ const router = createRouter({
     { path: '/register', name: 'register', component: RegisterView },
     { path: '/register/company', name: 'company-register', component: CompanyRegisterView },
     {
+      path: '/company/account',
+      name: 'company-account',
+      component: CompanyAccountView,
+      meta: { requiresAuth: true, roles: ['company'] },
+    },
+    {
       path: '/company/interns',
       name: 'company-interns',
       component: CompanyInternsView,
@@ -61,6 +69,13 @@ const router = createRouter({
       name: 'company-requirements',
       component: CompanyRequirementsView,
       meta: { requiresAuth: true, roles: ['company'] },
+    },
+    {
+      path: '/intern/overview',
+      name: 'intern-overview',
+      component: InternOverviewView,
+      props: { accountRole: 'intern' },
+      meta: { requiresAuth: true, roles: ['intern'] },
     },
     {
       path: '/intern/account',
@@ -129,6 +144,10 @@ router.beforeEach(async (to) => {
 
   const role = auth.user?.role ?? 'student'
   const workspace = defaultWorkspacePath(role)
+
+  if (role === 'intern' && auth.user?.must_change_password && to.path !== '/intern/account') {
+    return { name: 'intern-account' }
+  }
 
   if (to.name === 'home' && auth.isAuthenticated) {
     return workspace

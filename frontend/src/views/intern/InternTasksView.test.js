@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import InternTasksView from './InternTasksView.vue'
 import { downloadInternTaskProof, listInternTasks, submitInternTaskProof } from '../../services/ojt'
 
@@ -12,6 +12,8 @@ vi.mock('../../services/ojt', () => ({
 vi.mock('../../services/api', () => ({
   apiErrorMessage: vi.fn(() => 'Unable to reach the API.'),
 }))
+
+enableAutoUnmount(afterEach)
 
 const task = {
   id: 4,
@@ -46,6 +48,7 @@ const mountView = () => mount(InternTasksView, {
 
 describe('InternTasksView', () => {
   beforeEach(() => vi.resetAllMocks())
+  afterEach(() => vi.unstubAllGlobals())
 
   it('shows assigned task details, separate submission state, and requested changes', async () => {
     listInternTasks.mockResolvedValueOnce(page([task]))
@@ -80,7 +83,7 @@ describe('InternTasksView', () => {
     expect(submitInternTaskProof).toHaveBeenCalledWith(4, expect.any(FormData))
     expect(payload.get('proof')).toBe(file)
     expect(payload.get('comment')).toBe('Updated report attached.')
-    expect(wrapper.text()).toContain('Proof submitted for review')
+    expect(document.body.textContent).toContain('Proof submitted')
   })
 
   it('requires a file and rejects unsupported or oversized files before upload', async () => {
@@ -107,6 +110,22 @@ describe('InternTasksView', () => {
     expect(wrapper.find('[data-testid="submit-task-proof-4"]').exists()).toBe(false)
   })
 
+  it('lets the intern preview their private proof file', async () => {
+    listInternTasks.mockResolvedValueOnce(page([task]))
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:intern-proof'), revokeObjectURL: vi.fn() })
+    downloadInternTaskProof.mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="view-task-proof-4"]').trigger('click')
+    await flushPromises()
+
+    expect(downloadInternTaskProof).toHaveBeenCalledWith(4)
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:intern-proof')
+    wrapper.unmount()
+  })
+
   it('keeps a pending submission read-only until the company reviews it', async () => {
     listInternTasks.mockResolvedValueOnce(page([{ ...task, submission_status: 'pending_review' }]))
     const wrapper = mountView()
@@ -128,6 +147,6 @@ describe('InternTasksView', () => {
     await wrapper.get('[data-testid="download-task-proof-4"]').trigger('click')
     await flushPromises()
     expect(downloadInternTaskProof).toHaveBeenCalledWith(4)
-    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to reach the API')
+    expect(document.body.querySelector('[data-testid="action-alert"]')?.textContent).toContain('Unable to reach the API')
   })
 })

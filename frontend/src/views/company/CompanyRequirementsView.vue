@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
 import DatePickerField from '../../components/DatePickerField.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
+import ProofPreviewModal from '../../components/ProofPreviewModal.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { apiErrorMessage } from '../../services/api'
 import {
@@ -24,17 +26,19 @@ const loadingInterns = ref(true)
 const loadingRequirements = ref(false)
 const internsError = ref('')
 const requirementsError = ref('')
-const actionError = ref('')
 const fieldErrors = ref({})
-const successMessage = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const creating = ref(false)
 const busyAction = ref('')
 const downloadingRequirementId = ref(null)
+const previewingRequirementId = ref(null)
+const proofPreview = ref({ open: false, title: '', file: null })
 const reviewComments = reactive({})
 const reviewErrors = reactive({})
 const form = reactive({ title: '', description: '', due_date: '', is_required: true })
 
 const selectedIntern = computed(() => interns.value.find((intern) => intern.id === Number(selectedInternId.value)) ?? null)
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
 
 const loadRequirements = async (page = 1) => {
   if (!selectedInternId.value) return false
@@ -75,8 +79,6 @@ const selectIntern = async (event) => {
   selectedInternId.value = event.target.value
   requirements.value = []
   pagination.value = null
-  successMessage.value = ''
-  actionError.value = ''
   fieldErrors.value = {}
   await loadRequirements(1)
 }
@@ -85,8 +87,6 @@ const firstError = (field) => fieldErrors.value[field]?.[0] ?? ''
 
 const createRequirement = async () => {
   fieldErrors.value = {}
-  actionError.value = ''
-  successMessage.value = ''
   if (!form.title.trim()) {
     fieldErrors.value = { title: ['Enter a requirement title.'] }
     return
@@ -105,10 +105,10 @@ const createRequirement = async () => {
     form.description = ''
     form.due_date = ''
     form.is_required = true
-    if (await loadRequirements(1)) successMessage.value = 'Requirement assigned.'
+    if (await loadRequirements(1)) showAlert('success', 'Requirement assigned', 'The requirement was assigned to the selected intern.')
   } catch (error) {
     fieldErrors.value = error?.response?.data?.errors ?? {}
-    actionError.value = apiErrorMessage(error, 'Unable to assign this requirement. Please try again.')
+    showAlert('error', 'Requirement not assigned', apiErrorMessage(error, 'Unable to assign this requirement. Please try again.'))
   } finally {
     creating.value = false
   }
@@ -116,7 +116,6 @@ const createRequirement = async () => {
 
 const review = async (requirement, decision) => {
   const comment = (reviewComments[requirement.id] ?? '').trim()
-  actionError.value = ''
   reviewErrors[requirement.id] = ''
 
   if (decision === 'request-changes' && !comment) {
@@ -134,11 +133,11 @@ const review = async (requirement, decision) => {
     }
     reviewComments[requirement.id] = ''
     if (await loadRequirements(currentPage.value)) {
-      successMessage.value = decision === 'approve' ? 'Requirement approved.' : 'Changes requested.'
+      showAlert('success', decision === 'approve' ? 'Requirement approved' : 'Changes requested', decision === 'approve' ? 'This requirement is complete.' : 'The intern can replace the proof and submit it again.')
     }
   } catch (error) {
     reviewErrors[requirement.id] = error?.response?.data?.errors?.comment?.[0] ?? ''
-    actionError.value = apiErrorMessage(error, 'Unable to review this requirement. Please try again.')
+    showAlert('error', 'Review not saved', apiErrorMessage(error, 'Unable to review this requirement. Please try again.'))
   } finally {
     busyAction.value = ''
   }
@@ -148,7 +147,6 @@ const downloadProof = async (requirement) => {
   if (downloadingRequirementId.value !== null) return
 
   downloadingRequirementId.value = requirement.id
-  actionError.value = ''
   try {
     const response = await downloadCompanyRequirementProof(Number(selectedInternId.value), requirement.id)
     const disposition = response.headers?.['content-disposition'] ?? ''
@@ -162,9 +160,22 @@ const downloadProof = async (requirement) => {
     link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (error) {
-    actionError.value = apiErrorMessage(error, 'Unable to download this proof. Please try again.')
+    showAlert('error', 'Proof not downloaded', apiErrorMessage(error, 'Unable to download this proof. Please try again.'))
   } finally {
     downloadingRequirementId.value = null
+  }
+}
+
+const viewProof = async (requirement) => {
+  if (previewingRequirementId.value !== null) return
+  previewingRequirementId.value = requirement.id
+  try {
+    const response = await downloadCompanyRequirementProof(Number(selectedInternId.value), requirement.id)
+    proofPreview.value = { open: true, title: requirement.title, file: response.data }
+  } catch (error) {
+    showAlert('error', 'Proof not opened', apiErrorMessage(error, 'Unable to open this proof. Please try again.'))
+  } finally {
+    previewingRequirementId.value = null
   }
 }
 
@@ -189,8 +200,8 @@ onMounted(loadInterns)
   <main class="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Requirements" description="Assign internship requirements and review proof submitted by your interns." />
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
-    <p v-if="actionError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ actionError }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
+    <ProofPreviewModal :open="proofPreview.open" :title="proofPreview.title" :file="proofPreview.file" @close="proofPreview = { open: false, title: '', file: null }" />
 
     <p v-if="loadingInterns" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading intern accounts...</p>
     <div v-else-if="internsError" class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
@@ -261,7 +272,10 @@ onMounted(loadInterns)
             </div>
             <p v-if="requirement.submission_comment" class="text-sm text-slate-700"><span class="font-semibold">Intern comment:</span> {{ requirement.submission_comment }}</p>
             <p v-if="requirement.review_comment" class="text-sm text-slate-700"><span class="font-semibold">Latest review comment:</span> {{ requirement.review_comment }}</p>
-            <button v-if="requirement.proof_available" type="button" class="app-button app-button--secondary" :disabled="downloadingRequirementId === requirement.id" :data-testid="`download-requirement-proof-${requirement.id}`" @click="downloadProof(requirement)">{{ downloadingRequirementId === requirement.id ? 'Downloading...' : 'Download proof' }}</button>
+            <div v-if="requirement.proof_available" class="flex flex-wrap gap-2">
+              <button type="button" class="app-button app-button--secondary" :disabled="previewingRequirementId === requirement.id" :data-testid="`view-requirement-proof-${requirement.id}`" @click="viewProof(requirement)">{{ previewingRequirementId === requirement.id ? 'Loading proof...' : 'View proof' }}</button>
+              <button type="button" class="app-button app-button--secondary" :disabled="downloadingRequirementId === requirement.id" :data-testid="`download-requirement-proof-${requirement.id}`" @click="downloadProof(requirement)">{{ downloadingRequirementId === requirement.id ? 'Downloading...' : 'Download proof' }}</button>
+            </div>
 
             <div v-if="requirement.submission_status === 'pending_review'" class="space-y-3 border-t border-slate-200 pt-4">
               <div>

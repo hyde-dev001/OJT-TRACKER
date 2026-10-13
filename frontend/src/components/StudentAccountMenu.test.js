@@ -62,7 +62,7 @@ describe('StudentAccountMenu', () => {
   })
 
   it.each([
-    ['company', '/company/interns', 'Intern accounts'],
+    ['company', '/company/account', 'Change password'],
     ['intern', '/intern/account', 'OJT account'],
   ])('shows %s accounts their own account link', async (role, destination, label) => {
     const wrapper = mount(StudentAccountMenu, {

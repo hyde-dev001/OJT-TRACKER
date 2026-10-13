@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import InternRequirementsView from './InternRequirementsView.vue'
 import { downloadInternRequirementProof, listInternRequirements, submitInternRequirementProof } from '../../services/ojt'
 
@@ -12,6 +12,8 @@ vi.mock('../../services/ojt', () => ({
 vi.mock('../../services/api', () => ({
   apiErrorMessage: vi.fn(() => 'Unable to reach the API.'),
 }))
+
+enableAutoUnmount(afterEach)
 
 const requirement = {
   id: 8,
@@ -47,6 +49,7 @@ const mountView = () => mount(InternRequirementsView, {
 
 describe('InternRequirementsView', () => {
   beforeEach(() => vi.resetAllMocks())
+  afterEach(() => vi.unstubAllGlobals())
 
   it('shows assigned requirement details and required status', async () => {
     listInternRequirements.mockResolvedValueOnce(page([requirement]))
@@ -80,7 +83,7 @@ describe('InternRequirementsView', () => {
     expect(submitInternRequirementProof).toHaveBeenCalledWith(8, expect.any(FormData))
     expect(payload.get('proof')).toBe(file)
     expect(payload.get('comment')).toBe('Journal attached.')
-    expect(wrapper.text()).toContain('Proof submitted for review')
+    expect(document.body.textContent).toContain('Proof submitted')
   })
 
   it('requires a file and rejects unsupported or oversized files before upload', async () => {
@@ -114,6 +117,22 @@ describe('InternRequirementsView', () => {
 
     expect(wrapper.get('[data-testid="intern-requirement-8"]').text()).toContain('waiting for review')
     expect(wrapper.find('[data-testid="submit-requirement-proof-8"]').exists()).toBe(false)
+  })
+
+  it('lets the intern preview their private requirement proof', async () => {
+    listInternRequirements.mockResolvedValueOnce(page([{ ...requirement, id: 5, proof_available: true, submission_status: 'pending_review' }]))
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:intern-requirement-proof'), revokeObjectURL: vi.fn() })
+    downloadInternRequirementProof.mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="view-requirement-proof-5"]').trigger('click')
+    await flushPromises()
+
+    expect(downloadInternRequirementProof).toHaveBeenCalledWith(5)
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:intern-requirement-proof')
+    wrapper.unmount()
   })
 
   it('shows a recoverable error when the requirements cannot load', async () => {

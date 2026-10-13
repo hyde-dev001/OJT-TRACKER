@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
+import ProofPreviewModal from '../../components/ProofPreviewModal.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { apiErrorMessage } from '../../services/api'
 import { downloadInternRequirementProof, listInternRequirements, submitInternRequirementProof } from '../../services/ojt'
@@ -12,13 +14,15 @@ const pagination = ref(null)
 const currentPage = ref(1)
 const loading = ref(true)
 const error = ref('')
-const actionError = ref('')
-const successMessage = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const busyRequirementId = ref(null)
 const downloadingRequirementId = ref(null)
+const previewingRequirementId = ref(null)
+const proofPreview = ref({ open: false, title: '', file: null })
 const proofFiles = reactive({})
 const comments = reactive({})
 const proofErrors = reactive({})
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
 
 async function load(page = currentPage.value) {
   loading.value = true
@@ -55,8 +59,6 @@ function selectProof(requirement, event) {
 
 async function submitProof(requirement) {
   proofErrors[requirement.id] = ''
-  actionError.value = ''
-  successMessage.value = ''
   if (!proofFiles[requirement.id]) {
     proofErrors[requirement.id] = 'Choose an image or PDF file before submitting.'
     return
@@ -73,12 +75,12 @@ async function submitProof(requirement) {
     requirements.value = requirements.value.map((item) => item.id === requirement.id ? updated : item)
     proofFiles[requirement.id] = null
     comments[requirement.id] = ''
-    successMessage.value = 'Proof submitted for review.'
+    showAlert('success', 'Proof submitted', 'Your proof was sent to the company account holder for review.')
   } catch (requestError) {
     proofErrors[requirement.id] = requestError?.response?.data?.errors?.proof?.[0]
       ?? requestError?.response?.data?.errors?.comment?.[0]
       ?? ''
-    actionError.value = apiErrorMessage(requestError, 'Unable to submit proof. Please try again.')
+    showAlert('error', 'Proof not submitted', apiErrorMessage(requestError, 'Unable to submit proof. Please try again.'))
   } finally {
     busyRequirementId.value = null
   }
@@ -87,7 +89,6 @@ async function submitProof(requirement) {
 async function downloadProof(requirement) {
   if (downloadingRequirementId.value !== null) return
   downloadingRequirementId.value = requirement.id
-  actionError.value = ''
   try {
     const response = await downloadInternRequirementProof(requirement.id)
     const disposition = response.headers?.['content-disposition'] ?? ''
@@ -101,9 +102,22 @@ async function downloadProof(requirement) {
     link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (requestError) {
-    actionError.value = apiErrorMessage(requestError, 'Unable to download this proof. Please try again.')
+    showAlert('error', 'Proof not downloaded', apiErrorMessage(requestError, 'Unable to download this proof. Please try again.'))
   } finally {
     downloadingRequirementId.value = null
+  }
+}
+
+async function viewProof(requirement) {
+  if (previewingRequirementId.value !== null) return
+  previewingRequirementId.value = requirement.id
+  try {
+    const response = await downloadInternRequirementProof(requirement.id)
+    proofPreview.value = { open: true, title: requirement.title, file: response.data }
+  } catch (requestError) {
+    showAlert('error', 'Proof not opened', apiErrorMessage(requestError, 'Unable to open this proof. Please try again.'))
+  } finally {
+    previewingRequirementId.value = null
   }
 }
 
@@ -121,8 +135,8 @@ onMounted(() => load(1))
   <main class="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Requirements" description="View requirements assigned by your company account holder and submit proof of completion." />
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
-    <p v-if="actionError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ actionError }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
+    <ProofPreviewModal :open="proofPreview.open" :title="proofPreview.title" :file="proofPreview.file" @close="proofPreview = { open: false, title: '', file: null }" />
     <p v-if="loading" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading requirements...</p>
     <div v-else-if="error" class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
       <p class="text-sm text-red-800">{{ error }}</p>
@@ -148,7 +162,10 @@ onMounted(() => load(1))
         <p v-if="requirement.review_comment" class="text-sm text-slate-700"><span class="font-semibold">Company account holder's comment:</span> {{ requirement.review_comment }}</p>
         <p v-if="requirement.submission_status === 'pending_review'" class="text-sm text-slate-600">Your submission is waiting for review.</p>
         <p v-if="requirement.submission_status === 'approved'" class="text-sm text-emerald-800">The company account holder approved this requirement.</p>
-        <button v-if="requirement.proof_available" type="button" class="app-button app-button--secondary" :disabled="downloadingRequirementId === requirement.id" :data-testid="`download-requirement-proof-${requirement.id}`" @click="downloadProof(requirement)">{{ downloadingRequirementId === requirement.id ? 'Downloading...' : 'Download your proof' }}</button>
+        <div v-if="requirement.proof_available" class="flex flex-wrap gap-2">
+          <button type="button" class="app-button app-button--secondary" :disabled="previewingRequirementId === requirement.id" :data-testid="`view-requirement-proof-${requirement.id}`" @click="viewProof(requirement)">{{ previewingRequirementId === requirement.id ? 'Loading proof...' : 'View proof' }}</button>
+          <button type="button" class="app-button app-button--secondary" :disabled="downloadingRequirementId === requirement.id" :data-testid="`download-requirement-proof-${requirement.id}`" @click="downloadProof(requirement)">{{ downloadingRequirementId === requirement.id ? 'Downloading...' : 'Download your proof' }}</button>
+        </div>
 
         <form v-if="['not_submitted', 'changes_requested'].includes(requirement.submission_status)" class="space-y-3 border-t border-slate-200 pt-4" :data-testid="`submit-requirement-proof-${requirement.id}`" @submit.prevent="submitProof(requirement)">
           <div>

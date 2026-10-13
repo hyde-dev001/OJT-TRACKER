@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
 import AppModal from '../../components/AppModal.vue'
 import DatePickerField from '../../components/DatePickerField.vue'
 import PageHeader from '../../components/PageHeader.vue'
@@ -24,9 +25,8 @@ const loadingInterns = ref(true)
 const loadingLogs = ref(false)
 const internsError = ref('')
 const logsError = ref('')
-const actionError = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const fieldErrors = ref({})
-const successMessage = ref('')
 const busyAction = ref('')
 const editingLogId = ref(null)
 const savingEdit = ref(false)
@@ -39,6 +39,7 @@ const selectedIntern = computed(() => interns.value.find((intern) => intern.id =
 const todayLog = computed(() => logs.value.find((log) => log.work_date === todayInPhilippines()) ?? null)
 const openTodayLog = computed(() => todayLog.value?.status === 'in_progress' ? todayLog.value : null)
 const editingLog = computed(() => logs.value.find((log) => log.id === editingLogId.value) ?? null)
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
 
 const loadLogs = async (page = 1) => {
   if (!selectedInternId.value) return false
@@ -63,7 +64,6 @@ const loadLogs = async (page = 1) => {
 const loadInterns = async () => {
   loadingInterns.value = true
   internsError.value = ''
-  successMessage.value = ''
 
   try {
     interns.value = await listCompanyInterns()
@@ -82,21 +82,17 @@ const selectIntern = async (event) => {
   selectedInternId.value = event.target.value
   logs.value = []
   pagination.value = null
-  successMessage.value = ''
-  actionError.value = ''
   fieldErrors.value = {}
   await loadLogs(1)
 }
 
 const clearActionFeedback = () => {
-  actionError.value = ''
   fieldErrors.value = {}
-  successMessage.value = ''
 }
 
 const showActionFailure = (error, fallback) => {
   fieldErrors.value = error?.response?.data?.errors ?? {}
-  actionError.value = apiErrorMessage(error, fallback)
+  showAlert('error', 'Attendance action not saved', apiErrorMessage(error, fallback))
 }
 
 const recordTimeIn = async () => {
@@ -106,7 +102,7 @@ const recordTimeIn = async () => {
   busyAction.value = 'time-in'
   try {
     await startCompanyWorkLog(Number(selectedInternId.value))
-    if (await loadLogs(1)) successMessage.value = 'Time in recorded.'
+    if (await loadLogs(1)) showAlert('success', 'Time in recorded', 'The intern’s work session has started.')
   } catch (error) {
     showActionFailure(error, 'Unable to record time in. Please try again.')
   } finally {
@@ -121,7 +117,7 @@ const recordTimeOut = async () => {
   busyAction.value = 'time-out'
   try {
     await endCompanyWorkLog(Number(selectedInternId.value), { break_minutes: Number(breakMinutes.value) })
-    if (await loadLogs(1)) successMessage.value = 'Time out recorded.'
+    if (await loadLogs(1)) showAlert('success', 'Time out recorded', 'The intern’s work session has been saved.')
   } catch (error) {
     showActionFailure(error, 'Unable to record time out. Please try again.')
   } finally {
@@ -164,11 +160,12 @@ const saveEdit = async () => {
     })
     if (await loadLogs(currentPage.value)) {
       editingLogId.value = null
-      successMessage.value = 'Work hours updated.'
+      showAlert('success', 'Work hours updated', 'The attendance record was corrected.')
     }
   } catch (error) {
     editErrors.value = error?.response?.data?.errors ?? {}
     editError.value = apiErrorMessage(error, 'Unable to update these work hours. Please try again.')
+    showAlert('error', 'Work hours not updated', editError.value)
   } finally {
     savingEdit.value = false
   }
@@ -184,8 +181,7 @@ onMounted(loadInterns)
   <main class="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Attendance" description="Record one daily work session for an intern and correct saved work hours when needed." />
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
-    <p v-if="actionError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ actionError }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
 
     <section class="space-y-4" aria-labelledby="attendance-title">
       <div>

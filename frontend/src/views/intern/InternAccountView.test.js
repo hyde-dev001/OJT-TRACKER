@@ -1,9 +1,11 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import InternAccountView from './InternAccountView.vue'
 import api, { ensureCsrfCookie } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+
+enableAutoUnmount(afterEach)
 
 vi.mock('../../services/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
@@ -84,7 +86,32 @@ describe('InternAccountView', () => {
     await flushPromises()
 
     expect(api.put).toHaveBeenCalledWith('/intern/internship', { required_hours: 600 })
-    expect(wrapper.text()).toContain('Required OJT hours saved')
+    expect(document.body.textContent).toContain('OJT hours saved')
+  })
+
+  it('lets interns show and hide each password during OJT account setup', async () => {
+    api.get.mockResolvedValue({ data: { data: internship } })
+    const { wrapper } = mountInternAccount({ must_change_password: true })
+
+    const fields = [
+      '#intern-current-password',
+      '#intern-new-password',
+      '#intern-password-confirmation',
+    ]
+
+    for (const selector of fields) {
+      expect(wrapper.get(selector).attributes('type')).toBe('password')
+    }
+
+    await wrapper.get('[data-testid="show-intern-current-password"]').trigger('click')
+    expect(wrapper.get('#intern-current-password').attributes('type')).toBe('text')
+    await wrapper.get('[data-testid="show-intern-current-password"]').trigger('click')
+    expect(wrapper.get('#intern-current-password').attributes('type')).toBe('password')
+
+    await wrapper.get('[data-testid="show-intern-new-password"]').trigger('click')
+    expect(wrapper.get('#intern-new-password').attributes('type')).toBe('text')
+    await wrapper.get('[data-testid="show-intern-confirm-password"]').trigger('click')
+    expect(wrapper.get('#intern-password-confirmation').attributes('type')).toBe('text')
   })
 
   it('shows the required-hours validation error without losing the entered value', async () => {
@@ -124,7 +151,7 @@ describe('InternAccountView', () => {
       password: 'AnotherPassword3!',
       password_confirmation: 'AnotherPassword3!',
     })
-    expect(wrapper.text()).toContain('Password changed')
+    expect(document.body.textContent).toContain('Password changed')
   })
 })
 

@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { todayInPhilippines } from '../../utils/dateBounds'
 import CompanyAttendanceView from './CompanyAttendanceView.vue'
 import {
@@ -9,6 +9,8 @@ import {
   startCompanyWorkLog,
   updateCompanyWorkLog,
 } from '../../services/ojt'
+
+enableAutoUnmount(afterEach)
 
 vi.mock('../../services/ojt', () => ({
   endCompanyWorkLog: vi.fn(),
@@ -138,7 +140,7 @@ describe('CompanyAttendanceView', () => {
 
     expect(startCompanyWorkLog).toHaveBeenCalledWith(7)
     expect(listCompanyInternWorkLogs).toHaveBeenCalledTimes(2)
-    expect(wrapper.text()).toContain('Time in recorded')
+    expect(document.body.textContent).toContain('Time in recorded')
     expect(wrapper.text()).toContain('In progress')
   })
 
@@ -167,7 +169,7 @@ describe('CompanyAttendanceView', () => {
 
     expect(endCompanyWorkLog).toHaveBeenCalledWith(7, { break_minutes: 30 })
     expect(listCompanyInternWorkLogs).toHaveBeenCalledTimes(2)
-    expect(wrapper.text()).toContain('Time out recorded')
+    expect(document.body.textContent).toContain('Time out recorded')
   })
 
   it('edits completed work hours without sending derived values and shows success', async () => {
@@ -202,6 +204,6 @@ describe('CompanyAttendanceView', () => {
     })
     expect(updateCompanyWorkLog.mock.calls[0][2]).not.toHaveProperty('rendered_minutes')
     expect(updateCompanyWorkLog.mock.calls[0][2]).not.toHaveProperty('status')
-    expect(wrapper.text()).toContain('Work hours updated')
+    expect(document.body.textContent).toContain('Work hours updated')
   })
 })

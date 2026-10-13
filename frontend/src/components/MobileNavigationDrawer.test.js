@@ -19,7 +19,7 @@ describe('MobileNavigationDrawer', () => {
 
   it.each([
     ['company', '/company/interns', 'Intern accounts'],
-    ['intern', '/intern/account', 'OJT account'],
+    ['intern', '/intern/overview', 'Overview'],
   ])('shows %s users only their workspace link', (role, destination, label) => {
     const wrapper = mount(MobileNavigationDrawer, {
       props: {
@@ -51,7 +51,7 @@ describe('MobileNavigationDrawer', () => {
     expect(wrapper.find('a[href="/student/work-hours"]').exists()).toBe(false)
   })
 
-  it('shows read-only Work Hours alongside the intern account page', () => {
+  it('shows read-only Work Hours alongside the intern overview', () => {
     const wrapper = mount(MobileNavigationDrawer, {
       props: {
         open: true,
@@ -62,7 +62,7 @@ describe('MobileNavigationDrawer', () => {
     })
 
     expect(wrapper.get('a[href="/intern/work-hours"]').text()).toContain('Work Hours')
-    expect(wrapper.get('a[href="/intern/account"]').text()).toContain('OJT account')
+    expect(wrapper.get('a[href="/intern/overview"]').text()).toContain('Overview')
     expect(wrapper.get('a[href="/intern/tasks"]').text()).toContain('Tasks')
     expect(wrapper.get('a[href="/intern/requirements"]').text()).toContain('Requirements')
     expect(wrapper.find('a[href="/student/work-hours"]').exists()).toBe(false)

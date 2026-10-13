@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PasswordRequirements from '../../components/PasswordRequirements.vue'
 import { apiErrorMessage } from '../../services/api'
@@ -16,15 +17,19 @@ const hoursError = ref('')
 const hoursErrors = ref({})
 const passwordError = ref('')
 const passwordErrors = ref({})
-const successMessage = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const hoursForm = reactive({ required_hours: '' })
 const passwordForm = reactive({ current_password: '', password: '', password_confirmation: '' })
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmationPassword = ref(false)
 const workDayLabels = computed(() => (internship.value?.work_days ?? []).map((day) => (
   ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][Number(day) - 1]
 )).filter(Boolean).join(', '))
 const hasRequiredHours = computed(() => internship.value?.required_hours != null)
 const mustChangePassword = computed(() => Boolean(authStore.user?.must_change_password))
 const showPasswordForm = computed(() => mustChangePassword.value || (internship.value && hasRequiredHours.value))
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
 
 async function loadInternship() {
   loading.value = true
@@ -44,15 +49,15 @@ async function saveHours() {
   savingHours.value = true
   hoursError.value = ''
   hoursErrors.value = {}
-  successMessage.value = ''
 
   try {
     internship.value = await updateInternRequiredHours(hoursForm.required_hours)
     hoursForm.required_hours = internship.value.required_hours
-    successMessage.value = 'Required OJT hours saved.'
+    showAlert('success', 'OJT hours saved', 'Your required OJT hours were saved.')
   } catch (error) {
     hoursErrors.value = error?.response?.data?.errors ?? {}
     hoursError.value = apiErrorMessage(error, 'Unable to save required OJT hours. Please try again.')
+    showAlert('error', 'OJT hours not saved', hoursError.value)
   } finally {
     savingHours.value = false
   }
@@ -62,7 +67,6 @@ async function savePassword() {
   savingPassword.value = true
   passwordError.value = ''
   passwordErrors.value = {}
-  successMessage.value = ''
 
   const changingFirstPassword = Boolean(authStore.user?.must_change_password)
   try {
@@ -70,11 +74,12 @@ async function savePassword() {
     passwordForm.current_password = ''
     passwordForm.password = ''
     passwordForm.password_confirmation = ''
-    successMessage.value = 'Password changed.'
+    showAlert('success', 'Password changed', 'Your password was updated.')
     if (changingFirstPassword) await loadInternship()
   } catch (error) {
     passwordErrors.value = error?.response?.data?.errors ?? {}
     passwordError.value = apiErrorMessage(error, 'Unable to change your password. Please try again.')
+    showAlert('error', 'Password not changed', passwordError.value)
   } finally {
     savingPassword.value = false
   }
@@ -89,7 +94,7 @@ onMounted(() => {
   <main class="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
     <PageHeader title="OJT account setup" description="Manage your required OJT hours and review the placement schedule set by your company." />
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
 
     <section v-if="showPasswordForm" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="password-setup-title">
       <h2 id="password-setup-title" class="text-xl font-semibold tracking-tight text-slate-950">{{ mustChangePassword ? 'Change your temporary password' : 'Change password' }}</h2>
@@ -97,18 +102,27 @@ onMounted(() => {
       <form class="mt-5 space-y-5" data-testid="intern-password-form" @submit.prevent="savePassword">
         <div>
           <label for="intern-current-password" class="block text-sm font-semibold text-slate-800">{{ mustChangePassword ? 'Temporary password' : 'Current password' }}</label>
-          <input id="intern-current-password" v-model="passwordForm.current_password" type="password" autocomplete="current-password" required class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <div class="relative mt-2">
+            <input id="intern-current-password" v-model="passwordForm.current_password" :type="showCurrentPassword ? 'text' : 'password'" autocomplete="current-password" required class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-16 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <button type="button" data-testid="show-intern-current-password" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100" :aria-pressed="showCurrentPassword" @click="showCurrentPassword = !showCurrentPassword">{{ showCurrentPassword ? 'Hide' : 'Show' }}</button>
+          </div>
           <p v-if="passwordErrors.current_password" class="mt-1 text-sm text-red-700" role="alert">{{ passwordErrors.current_password[0] }}</p>
         </div>
         <div>
           <label for="intern-new-password" class="block text-sm font-semibold text-slate-800">New password</label>
-          <input id="intern-new-password" v-model="passwordForm.password" type="password" autocomplete="new-password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <div class="relative mt-2">
+            <input id="intern-new-password" v-model="passwordForm.password" :type="showNewPassword ? 'text' : 'password'" autocomplete="new-password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-16 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <button type="button" data-testid="show-intern-new-password" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100" :aria-pressed="showNewPassword" @click="showNewPassword = !showNewPassword">{{ showNewPassword ? 'Hide' : 'Show' }}</button>
+          </div>
           <PasswordRequirements :password="passwordForm.password" id-prefix="intern" />
           <p v-if="passwordErrors.password" class="mt-1 text-sm text-red-700" role="alert">{{ passwordErrors.password[0] }}</p>
         </div>
         <div>
           <label for="intern-password-confirmation" class="block text-sm font-semibold text-slate-800">Confirm new password</label>
-          <input id="intern-password-confirmation" v-model="passwordForm.password_confirmation" type="password" autocomplete="new-password" required minlength="12" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <div class="relative mt-2">
+            <input id="intern-password-confirmation" v-model="passwordForm.password_confirmation" :type="showConfirmationPassword ? 'text' : 'password'" autocomplete="new-password" required minlength="12" class="block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-16 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <button type="button" data-testid="show-intern-confirm-password" class="absolute inset-y-0 right-2 my-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100" :aria-pressed="showConfirmationPassword" @click="showConfirmationPassword = !showConfirmationPassword">{{ showConfirmationPassword ? 'Hide' : 'Show' }}</button>
+          </div>
           <p v-if="passwordErrors.password_confirmation" class="mt-1 text-sm text-red-700" role="alert">{{ passwordErrors.password_confirmation[0] }}</p>
         </div>
         <p v-if="passwordError" class="text-sm text-red-700" role="alert">{{ passwordError }}</p>

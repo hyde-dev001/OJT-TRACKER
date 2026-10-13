@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
 import DatePickerField from '../../components/DatePickerField.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
+import ProofPreviewModal from '../../components/ProofPreviewModal.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { apiErrorMessage } from '../../services/api'
 import {
@@ -24,17 +26,19 @@ const loadingInterns = ref(true)
 const loadingTasks = ref(false)
 const internsError = ref('')
 const tasksError = ref('')
-const actionError = ref('')
 const fieldErrors = ref({})
-const successMessage = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const creating = ref(false)
 const busyAction = ref('')
 const downloadingTaskId = ref(null)
+const previewingTaskId = ref(null)
+const proofPreview = ref({ open: false, title: '', file: null })
 const reviewComments = reactive({})
 const reviewErrors = reactive({})
 const form = reactive({ title: '', description: '', due_date: '' })
 
 const selectedIntern = computed(() => interns.value.find((intern) => intern.id === Number(selectedInternId.value)) ?? null)
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
 
 const loadTasks = async (page = 1) => {
   if (!selectedInternId.value) return false
@@ -75,8 +79,6 @@ const selectIntern = async (event) => {
   selectedInternId.value = event.target.value
   tasks.value = []
   pagination.value = null
-  successMessage.value = ''
-  actionError.value = ''
   fieldErrors.value = {}
   await loadTasks(1)
 }
@@ -85,8 +87,6 @@ const firstError = (field) => fieldErrors.value[field]?.[0] ?? ''
 
 const createTask = async () => {
   fieldErrors.value = {}
-  actionError.value = ''
-  successMessage.value = ''
   if (!form.title.trim()) {
     fieldErrors.value = { title: ['Enter a task title.'] }
     return
@@ -103,10 +103,10 @@ const createTask = async () => {
     form.title = ''
     form.description = ''
     form.due_date = ''
-    if (await loadTasks(1)) successMessage.value = 'Task assigned.'
+    if (await loadTasks(1)) showAlert('success', 'Task assigned', 'The task was assigned to the selected intern.')
   } catch (error) {
     fieldErrors.value = error?.response?.data?.errors ?? {}
-    actionError.value = apiErrorMessage(error, 'Unable to assign this task. Please try again.')
+    showAlert('error', 'Task not assigned', apiErrorMessage(error, 'Unable to assign this task. Please try again.'))
   } finally {
     creating.value = false
   }
@@ -114,7 +114,6 @@ const createTask = async () => {
 
 const review = async (task, decision) => {
   const comment = (reviewComments[task.id] ?? '').trim()
-  actionError.value = ''
   reviewErrors[task.id] = ''
 
   if (decision === 'request-changes' && !comment) {
@@ -132,11 +131,11 @@ const review = async (task, decision) => {
     }
     reviewComments[task.id] = ''
     if (await loadTasks(currentPage.value)) {
-      successMessage.value = decision === 'approve' ? 'Task approved.' : 'Changes requested.'
+      showAlert('success', decision === 'approve' ? 'Task approved' : 'Changes requested', decision === 'approve' ? 'This task is complete.' : 'The intern can replace the proof and submit it again.')
     }
   } catch (error) {
     reviewErrors[task.id] = error?.response?.data?.errors?.comment?.[0] ?? ''
-    actionError.value = apiErrorMessage(error, 'Unable to review this task. Please try again.')
+    showAlert('error', 'Review not saved', apiErrorMessage(error, 'Unable to review this task. Please try again.'))
   } finally {
     busyAction.value = ''
   }
@@ -146,7 +145,6 @@ const downloadProof = async (task) => {
   if (downloadingTaskId.value !== null) return
 
   downloadingTaskId.value = task.id
-  actionError.value = ''
   try {
     const response = await downloadCompanyTaskProof(Number(selectedInternId.value), task.id)
     const disposition = response.headers?.['content-disposition'] ?? ''
@@ -160,9 +158,22 @@ const downloadProof = async (task) => {
     link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (error) {
-    actionError.value = apiErrorMessage(error, 'Unable to download this proof. Please try again.')
+    showAlert('error', 'Proof not downloaded', apiErrorMessage(error, 'Unable to download this proof. Please try again.'))
   } finally {
     downloadingTaskId.value = null
+  }
+}
+
+const viewProof = async (task) => {
+  if (previewingTaskId.value !== null) return
+  previewingTaskId.value = task.id
+  try {
+    const response = await downloadCompanyTaskProof(Number(selectedInternId.value), task.id)
+    proofPreview.value = { open: true, title: task.title, file: response.data }
+  } catch (error) {
+    showAlert('error', 'Proof not opened', apiErrorMessage(error, 'Unable to open this proof. Please try again.'))
+  } finally {
+    previewingTaskId.value = null
   }
 }
 
@@ -187,8 +198,8 @@ onMounted(loadInterns)
   <main class="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Tasks" description="Assign tasks to your interns and review their proof submissions." />
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
-    <p v-if="actionError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ actionError }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
+    <ProofPreviewModal :open="proofPreview.open" :title="proofPreview.title" :file="proofPreview.file" @close="proofPreview = { open: false, title: '', file: null }" />
 
     <p v-if="loadingInterns" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading intern accounts...</p>
     <div v-else-if="internsError" class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
@@ -225,7 +236,6 @@ onMounted(loadInterns)
             <p v-if="firstError('due_date')" id="company-task-due-date-error" class="mt-1 text-sm text-red-700" role="alert">{{ firstError('due_date') }}</p>
           </div>
         </div>
-        <p v-if="actionError && fieldErrors.title" class="text-sm text-red-700" role="alert">{{ actionError }}</p>
         <button type="submit" class="app-button app-button--primary" :disabled="creating">{{ creating ? 'Assigning...' : 'Assign task' }}</button>
       </form>
 
@@ -255,7 +265,10 @@ onMounted(loadInterns)
             </div>
             <p v-if="task.submission_comment" class="text-sm text-slate-700"><span class="font-semibold">Intern comment:</span> {{ task.submission_comment }}</p>
             <p v-if="task.review_comment" class="text-sm text-slate-700"><span class="font-semibold">Latest review comment:</span> {{ task.review_comment }}</p>
-            <button v-if="task.proof_available" type="button" class="app-button app-button--secondary" :disabled="downloadingTaskId === task.id" :data-testid="`download-task-proof-${task.id}`" @click="downloadProof(task)">{{ downloadingTaskId === task.id ? 'Downloading...' : 'Download proof' }}</button>
+            <div v-if="task.proof_available" class="flex flex-wrap gap-2">
+              <button type="button" class="app-button app-button--secondary" :disabled="previewingTaskId === task.id" :data-testid="`view-task-proof-${task.id}`" @click="viewProof(task)">{{ previewingTaskId === task.id ? 'Loading proof...' : 'View proof' }}</button>
+              <button type="button" class="app-button app-button--secondary" :disabled="downloadingTaskId === task.id" :data-testid="`download-task-proof-${task.id}`" @click="downloadProof(task)">{{ downloadingTaskId === task.id ? 'Downloading...' : 'Download proof' }}</button>
+            </div>
 
             <div v-if="task.submission_status === 'pending_review'" class="space-y-3 border-t border-slate-200 pt-4">
               <div>

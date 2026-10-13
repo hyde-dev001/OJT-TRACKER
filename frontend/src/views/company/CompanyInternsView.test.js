@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CompanyInternsView from './CompanyInternsView.vue'
 import {
   createCompanyIntern,
@@ -7,6 +7,8 @@ import {
   resetCompanyInternPassword,
   updateCompanyPlacement,
 } from '../../services/ojt'
+
+enableAutoUnmount(afterEach)
 
 vi.mock('../../services/ojt', () => ({
   createCompanyIntern: vi.fn(),
@@ -35,7 +37,15 @@ const intern = {
 }
 
 const mountView = () => mount(CompanyInternsView, {
-  global: { stubs: { DatePickerField: DatePickerFieldStub } },
+  global: {
+    stubs: {
+      AppModal: {
+        props: ['open', 'title'],
+        template: '<section v-if="open" role="dialog" :aria-label="title"><slot /><slot name="footer" /></section>',
+      },
+      DatePickerField: DatePickerFieldStub,
+    },
+  },
 })
 
 describe('CompanyInternsView', () => {
@@ -74,6 +84,7 @@ describe('CompanyInternsView', () => {
     listCompanyInterns.mockResolvedValueOnce([])
     const wrapper = mountView()
     await flushPromises()
+    await wrapper.get('[data-testid="open-create-intern-modal"]').trigger('click')
 
     const passwordToggle = wrapper.get('[data-testid="toggle-new-intern-password"]')
     const confirmationToggle = wrapper.get('[data-testid="toggle-new-intern-password-confirmation"]')
@@ -90,6 +101,32 @@ describe('CompanyInternsView', () => {
 
     await passwordToggle.trigger('click')
     expect(wrapper.get('#new-intern-password').attributes('type')).toBe('password')
+  })
+
+  it('keeps creation in a modal and lists interns in a paginated table', async () => {
+    const interns = Array.from({ length: 12 }, (_, index) => ({
+      ...intern,
+      id: index + 1,
+      name: `Intern ${index + 1}`,
+      email: `intern${index + 1}@example.com`,
+    }))
+    listCompanyInterns.mockResolvedValueOnce(interns)
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="company-intern-create-form"]').exists()).toBe(false)
+    expect(wrapper.find('table').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="company-intern-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="company-intern-11"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Work days')
+
+    await wrapper.get('[aria-label="Next page"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="company-intern-1"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="company-intern-11"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="open-create-intern-modal"]').trigger('click')
+    expect(wrapper.get('[role="dialog"]').find('[data-testid="company-intern-create-form"]').exists()).toBe(true)
   })
 
   it('creates an intern, displays its setup state, and clears the temporary password', async () => {
@@ -113,7 +150,10 @@ describe('CompanyInternsView', () => {
       expected_hours_per_day: 8,
     })
     expect(wrapper.text()).toContain('Needs initial setup')
-    expect(wrapper.text()).toContain('Intern account created')
+    expect(document.body.textContent).toContain('Intern account created')
+    expect(wrapper.find('[data-testid="company-intern-create-form"]').exists()).toBe(false)
+    document.body.querySelector('[data-testid="alert-close"]')?.click()
+    await wrapper.get('[data-testid="open-create-intern-modal"]').trigger('click')
     expect(wrapper.get('#new-intern-password').element.value).toBe('')
     expect(wrapper.get('#new-intern-password-confirmation').element.value).toBe('')
   })
@@ -151,7 +191,7 @@ describe('CompanyInternsView', () => {
       work_days: [1, 2, 3, 4, 5],
       expected_hours_per_day: 7.5,
     })
-    expect(wrapper.text()).toContain('Placement updated')
+    expect(document.body.textContent).toContain('Placement updated')
   })
 
   it('resets an intern password and clears the reset password fields', async () => {
@@ -169,13 +209,16 @@ describe('CompanyInternsView', () => {
       password: 'NewTemporaryPass1!',
       password_confirmation: 'NewTemporaryPass1!',
     })
-    expect(wrapper.text()).toContain('Temporary password reset')
+    expect(document.body.textContent).toContain('Password reset')
     expect(wrapper.text()).not.toContain('NewTemporaryPass1!')
     expect(wrapper.find('#reset-password-7').exists()).toBe(false)
   })
 })
 
 async function fillCreateForm(wrapper) {
+  if (!wrapper.find('[data-testid="company-intern-create-form"]').exists()) {
+    await wrapper.get('[data-testid="open-create-intern-modal"]').trigger('click')
+  }
   await wrapper.get('#new-intern-first-name').setValue('Taylor')
   await wrapper.get('#new-intern-last-name').setValue('Lee')
   await wrapper.get('#new-intern-email').setValue('taylor.lee@example.com')

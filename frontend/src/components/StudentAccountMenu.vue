@@ -11,12 +11,12 @@ const open = ref(false)
 const container = ref(null)
 const trigger = ref(null)
 const accountLink = computed(() => props.user?.role === 'company'
-  ? '/company/interns'
+  ? '/company/account'
   : props.user?.role === 'intern'
     ? '/intern/account'
     : '/student/profile')
 const accountLinkLabel = computed(() => props.user?.role === 'company'
-  ? 'Intern accounts'
+  ? 'Change password'
   : props.user?.role === 'intern'
     ? 'OJT account'
     : 'Profile & Password')

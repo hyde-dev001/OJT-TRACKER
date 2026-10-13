@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
+import ProofPreviewModal from '../../components/ProofPreviewModal.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { apiErrorMessage } from '../../services/api'
 import { downloadInternTaskProof, listInternTasks, submitInternTaskProof } from '../../services/ojt'
@@ -12,13 +14,15 @@ const pagination = ref(null)
 const currentPage = ref(1)
 const loading = ref(true)
 const error = ref('')
-const actionError = ref('')
-const successMessage = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const busyTaskId = ref(null)
 const downloadingTaskId = ref(null)
+const previewingTaskId = ref(null)
+const proofPreview = ref({ open: false, title: '', file: null })
 const proofFiles = reactive({})
 const comments = reactive({})
 const proofErrors = reactive({})
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
 
 async function load(page = currentPage.value) {
   loading.value = true
@@ -55,8 +59,6 @@ function selectProof(task, event) {
 
 async function submitProof(task) {
   proofErrors[task.id] = ''
-  actionError.value = ''
-  successMessage.value = ''
   if (!proofFiles[task.id]) {
     proofErrors[task.id] = 'Choose an image or PDF file before submitting.'
     return
@@ -73,12 +75,12 @@ async function submitProof(task) {
     tasks.value = tasks.value.map((item) => item.id === task.id ? updated : item)
     proofFiles[task.id] = null
     comments[task.id] = ''
-    successMessage.value = 'Proof submitted for review.'
+    showAlert('success', 'Proof submitted', 'Your proof was sent to the company account holder for review.')
   } catch (requestError) {
     proofErrors[task.id] = requestError?.response?.data?.errors?.proof?.[0]
       ?? requestError?.response?.data?.errors?.comment?.[0]
       ?? ''
-    actionError.value = apiErrorMessage(requestError, 'Unable to submit proof. Please try again.')
+    showAlert('error', 'Proof not submitted', apiErrorMessage(requestError, 'Unable to submit proof. Please try again.'))
   } finally {
     busyTaskId.value = null
   }
@@ -87,7 +89,6 @@ async function submitProof(task) {
 async function downloadProof(task) {
   if (downloadingTaskId.value !== null) return
   downloadingTaskId.value = task.id
-  actionError.value = ''
   try {
     const response = await downloadInternTaskProof(task.id)
     const disposition = response.headers?.['content-disposition'] ?? ''
@@ -101,9 +102,22 @@ async function downloadProof(task) {
     link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (requestError) {
-    actionError.value = apiErrorMessage(requestError, 'Unable to download this proof. Please try again.')
+    showAlert('error', 'Proof not downloaded', apiErrorMessage(requestError, 'Unable to download this proof. Please try again.'))
   } finally {
     downloadingTaskId.value = null
+  }
+}
+
+async function viewProof(task) {
+  if (previewingTaskId.value !== null) return
+  previewingTaskId.value = task.id
+  try {
+    const response = await downloadInternTaskProof(task.id)
+    proofPreview.value = { open: true, title: task.title, file: response.data }
+  } catch (requestError) {
+    showAlert('error', 'Proof not opened', apiErrorMessage(requestError, 'Unable to open this proof. Please try again.'))
+  } finally {
+    previewingTaskId.value = null
   }
 }
 
@@ -121,8 +135,8 @@ onMounted(() => load(1))
   <main class="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Tasks" description="View tasks assigned by your company account holder and submit proof of your work." />
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
-    <p v-if="actionError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ actionError }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
+    <ProofPreviewModal :open="proofPreview.open" :title="proofPreview.title" :file="proofPreview.file" @close="proofPreview = { open: false, title: '', file: null }" />
     <p v-if="loading" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading tasks...</p>
     <div v-else-if="error" class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
       <p class="text-sm text-red-800">{{ error }}</p>
@@ -147,7 +161,10 @@ onMounted(() => load(1))
         <p v-if="task.review_comment" class="text-sm text-slate-700"><span class="font-semibold">Company account holder's comment:</span> {{ task.review_comment }}</p>
         <p v-if="task.submission_status === 'pending_review'" class="text-sm text-slate-600">Your submission is waiting for review.</p>
         <p v-if="task.submission_status === 'approved'" class="text-sm text-emerald-800">The company account holder approved this task.</p>
-        <button v-if="task.proof_available" type="button" class="app-button app-button--secondary" :disabled="downloadingTaskId === task.id" :data-testid="`download-task-proof-${task.id}`" @click="downloadProof(task)">{{ downloadingTaskId === task.id ? 'Downloading...' : 'Download your proof' }}</button>
+        <div v-if="task.proof_available" class="flex flex-wrap gap-2">
+          <button type="button" class="app-button app-button--secondary" :disabled="previewingTaskId === task.id" :data-testid="`view-task-proof-${task.id}`" @click="viewProof(task)">{{ previewingTaskId === task.id ? 'Loading proof...' : 'View proof' }}</button>
+          <button type="button" class="app-button app-button--secondary" :disabled="downloadingTaskId === task.id" :data-testid="`download-task-proof-${task.id}`" @click="downloadProof(task)">{{ downloadingTaskId === task.id ? 'Downloading...' : 'Download your proof' }}</button>
+        </div>
 
         <form v-if="['not_submitted', 'changes_requested'].includes(task.submission_status)" class="space-y-3 border-t border-slate-200 pt-4" :data-testid="`submit-task-proof-${task.id}`" @submit.prevent="submitProof(task)">
           <div>

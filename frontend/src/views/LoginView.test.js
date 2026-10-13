@@ -59,7 +59,7 @@ describe('LoginView', () => {
 
   it.each([
     ['company', '/company/interns'],
-    ['intern', '/intern/account'],
+    ['intern', '/intern/overview'],
   ])('routes a %s account to its own workspace', async (role, destination) => {
     ensureCsrfCookie.mockResolvedValue({})
     api.post.mockResolvedValue({

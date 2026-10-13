@@ -1,7 +1,7 @@
 const workspaces = {
   student: { path: '/student/overview', prefix: '/student/' },
   company: { path: '/company/interns', prefix: '/company/' },
-  intern: { path: '/intern/account', prefix: '/intern/' },
+  intern: { path: '/intern/overview', prefix: '/intern/' },
 }
 
 export function defaultWorkspacePath(role) {

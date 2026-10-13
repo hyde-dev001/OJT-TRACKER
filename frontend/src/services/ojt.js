@@ -22,11 +22,13 @@ function pageParams({ page = 1, filter } = {}) {
 
 export const getStudentInternship = () => unwrap(api.get('/student/internship'))
 export const getInternInternship = () => unwrap(api.get('/intern/internship'))
+export const getInternOverview = () => unwrap(api.get('/intern/overview'))
 export const updateInternRequiredHours = (requiredHours) => unwrap(api.put('/intern/internship', { required_hours: Number(requiredHours) }))
 export const listCompanyInterns = () => unwrap(api.get('/company/interns'))
 export const createCompanyIntern = (payload) => unwrap(api.post('/company/interns', payload))
 export const updateCompanyPlacement = (internId, payload) => unwrap(api.put(`/company/interns/${internId}/placement`, payload))
 export const resetCompanyInternPassword = (internId, payload) => unwrap(api.post(`/company/interns/${internId}/password-reset`, payload))
+export const changeCompanyPassword = (payload) => unwrap(api.put('/company/password', payload))
 export const listCompanyInternTasks = (internId, options = {}) => unwrapPage(api.get(`/company/interns/${internId}/tasks`, { params: pageParams(options) }))
 export const createCompanyInternTask = (internId, payload) => unwrap(api.post(`/company/interns/${internId}/tasks`, payload))
 export const approveCompanyTask = (internId, taskId, comment) => unwrap(api.post(`/company/interns/${internId}/tasks/${taskId}/approve`, comment ? { comment } : {}))

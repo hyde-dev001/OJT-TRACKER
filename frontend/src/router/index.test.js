@@ -60,7 +60,7 @@ describe('router guards', () => {
 
   it.each([
     ['company', '/company/interns'],
-    ['intern', '/intern/account'],
+    ['intern', '/intern/overview'],
   ])('redirects a %s account away from student routes', async (role, destination) => {
     const auth = useAuthStore()
     auth.user = { id: 2, name: 'Account', role }
@@ -132,6 +132,44 @@ describe('router guards', () => {
 
     expect(router.currentRoute.value.name).toBe('intern-account')
     expect(router.currentRoute.value.meta.roles).toEqual(['intern'])
+  })
+
+  it('keeps interns with a temporary password on account setup until it is changed', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2, name: 'Taylor', role: 'intern', must_change_password: true }
+
+    await router.push('/intern/overview')
+
+    expect(router.currentRoute.value.path).toBe('/intern/account')
+
+    await router.push('/login')
+
+    expect(router.currentRoute.value.path).toBe('/intern/account')
+  })
+
+  it('protects the intern overview page with the intern account role', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2, name: 'Taylor', role: 'intern' }
+
+    await router.push('/intern/overview')
+
+    expect(router.currentRoute.value.name).toBe('intern-overview')
+    expect(router.currentRoute.value.meta.roles).toEqual(['intern'])
+  })
+
+  it('protects the company account password page with the company role', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 3, name: 'Company', role: 'company' }
+
+    await router.push('/company/account')
+    expect(router.currentRoute.value.name).toBe('company-account')
+    expect(router.currentRoute.value.meta.roles).toEqual(['company'])
+
+    await router.push('/about')
+    auth.user = { id: 1, name: 'Student', role: 'student' }
+    await router.push('/company/account')
+
+    expect(router.currentRoute.value.name).toBe('student-overview')
   })
 
   it('protects the intern Work Hours page with the intern account role', async () => {

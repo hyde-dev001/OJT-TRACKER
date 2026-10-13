@@ -75,7 +75,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', handleKeydown))
           <RouterLink to="/company/requirements" class="mobile-navigation-link" @click="close(false)">Requirements</RouterLink>
         </template>
         <template v-else-if="props.authenticated && props.user?.role === 'intern'">
-          <RouterLink to="/intern/account" class="mobile-navigation-link" @click="close(false)">OJT account</RouterLink>
+          <RouterLink to="/intern/overview" class="mobile-navigation-link" @click="close(false)">Overview</RouterLink>
           <RouterLink to="/intern/work-hours" class="mobile-navigation-link" @click="close(false)">Work Hours</RouterLink>
           <RouterLink to="/intern/tasks" class="mobile-navigation-link" @click="close(false)">Tasks</RouterLink>
           <RouterLink to="/intern/requirements" class="mobile-navigation-link" @click="close(false)">Requirements</RouterLink>

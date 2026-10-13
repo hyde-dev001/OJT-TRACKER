@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CompanyTasksView from './CompanyTasksView.vue'
 import {
   approveCompanyTask,
@@ -22,6 +22,8 @@ vi.mock('../../services/ojt', () => ({
 vi.mock('../../services/api', () => ({
   apiErrorMessage: vi.fn(() => 'Unable to reach the API.'),
 }))
+
+enableAutoUnmount(afterEach)
 
 const intern = { id: 7, name: 'Taylor Lee', email: 'taylor.lee@example.com' }
 const task = {
@@ -60,6 +62,7 @@ const mountView = () => mount(CompanyTasksView, {
 
 describe('CompanyTasksView', () => {
   beforeEach(() => vi.resetAllMocks())
+  afterEach(() => vi.unstubAllGlobals())
 
   it('shows loading and empty states when there are no interns', async () => {
     let resolveInterns
@@ -110,7 +113,7 @@ describe('CompanyTasksView', () => {
       description: 'Summarize assigned work.',
       due_date: '2026-10-20',
     })
-    expect(wrapper.text()).toContain('Task assigned')
+    expect(document.body.textContent).toContain('Task assigned')
   })
 
   it('lets a company account holder request changes with a comment and approve without one', async () => {
@@ -130,11 +133,13 @@ describe('CompanyTasksView', () => {
     await wrapper.get('[data-testid="request-changes-task-3"]').trigger('click')
     await flushPromises()
     expect(requestCompanyTaskChanges).toHaveBeenCalledWith(7, 3, { comment: 'Please add the date range.' })
+    expect(document.body.textContent).toContain('Changes requested')
+    document.body.querySelector('[data-testid="alert-close"]')?.click()
 
     await wrapper.get('[data-testid="approve-task-3"]').trigger('click')
     await flushPromises()
     expect(approveCompanyTask).toHaveBeenCalledWith(7, 3, undefined)
-    expect(wrapper.text()).toContain('Task approved')
+    expect(document.body.textContent).toContain('Task approved')
   })
 
   it('shows a recoverable error when a proof download fails', async () => {
@@ -148,7 +153,24 @@ describe('CompanyTasksView', () => {
     await flushPromises()
 
     expect(downloadCompanyTaskProof).toHaveBeenCalledWith(7, 3)
-    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to reach the API')
+    expect(document.body.querySelector('[data-testid="action-alert"]')?.textContent).toContain('Unable to reach the API')
+  })
+
+  it('lets the company account holder preview private proof before reviewing it', async () => {
+    listCompanyInterns.mockResolvedValueOnce([intern])
+    listCompanyInternTasks.mockResolvedValueOnce(page([task]))
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:company-proof'), revokeObjectURL: vi.fn() })
+    downloadCompanyTaskProof.mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="view-task-proof-3"]').trigger('click')
+    await flushPromises()
+
+    expect(downloadCompanyTaskProof).toHaveBeenCalledWith(7, 3)
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:company-proof')
+    wrapper.unmount()
   })
 
   it('shows a retry action when tasks cannot load', async () => {

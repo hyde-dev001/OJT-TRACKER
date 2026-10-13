@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Company\InternController;
+use App\Http\Controllers\Company\AccountController as CompanyAccountController;
 use App\Http\Controllers\Company\RequirementController as CompanyRequirementController;
 use App\Http\Controllers\Company\TaskController as CompanyTaskController;
 use App\Http\Controllers\Company\WorkLogController as CompanyWorkLogController;
 use App\Http\Controllers\Intern\AccountController;
+use App\Http\Controllers\Intern\OverviewController as InternOverviewController;
 use App\Http\Controllers\Intern\RequirementController as InternRequirementController;
 use App\Http\Controllers\Intern\TaskController as InternTaskController;
 use App\Http\Controllers\Intern\WorkLogController as InternWorkLogController;
@@ -36,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::middleware(['account-role:company'])->prefix('company')->group(function (): void {
+        Route::put('/password', [CompanyAccountController::class, 'changePassword']);
         Route::get('/interns', [InternController::class, 'index']);
         Route::post('/interns', [InternController::class, 'store']);
         Route::get('/interns/{intern}/tasks', [CompanyTaskController::class, 'index']);
@@ -61,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/password', [AccountController::class, 'changePassword']);
 
         Route::middleware('intern.password-changed')->group(function (): void {
+            Route::get('/overview', InternOverviewController::class);
             Route::get('/internship', [InternshipController::class, 'show']);
             Route::put('/internship', [InternshipController::class, 'update']);
             Route::get('/work-logs', [InternWorkLogController::class, 'index']);

@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Intern;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ChangeInternPasswordRequest;
+use App\Http\Requests\ChangePasswordRequest;
 use Illuminate\Http\JsonResponse;
 
 class AccountController extends Controller
 {
-    public function changePassword(ChangeInternPasswordRequest $request): JsonResponse
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         $intern = $request->user();
         $intern->password = $request->validated('password');

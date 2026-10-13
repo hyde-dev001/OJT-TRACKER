@@ -1,7 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import ActionAlert from '../../components/ActionAlert.vue'
+import AppModal from '../../components/AppModal.vue'
 import DatePickerField from '../../components/DatePickerField.vue'
 import PageHeader from '../../components/PageHeader.vue'
+import PaginationControls from '../../components/PaginationControls.vue'
 import PasswordRequirements from '../../components/PasswordRequirements.vue'
 import { apiErrorMessage } from '../../services/api'
 import {
@@ -43,6 +46,9 @@ const resetForm = reactive({ password: '', password_confirmation: '' })
 const showNewInternPassword = ref(false)
 const showNewInternPasswordConfirmation = ref(false)
 const interns = ref([])
+const currentPage = ref(1)
+const createModalOpen = ref(false)
+const pageSize = 10
 const loading = ref(true)
 const loadError = ref('')
 const creating = ref(false)
@@ -56,10 +62,41 @@ const placementErrors = ref({})
 const placementError = ref('')
 const resetErrors = ref({})
 const resetError = ref('')
-const successMessage = ref('')
+const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const createFormElement = ref(null)
 const minimumEndDate = computed(() => nextDate(newInternForm.start_date))
 const minimumPlacementEndDate = computed(() => nextDate(placementForm.start_date))
+const editingIntern = computed(() => interns.value.find((intern) => intern.id === editingInternId.value) ?? null)
+const resettingIntern = computed(() => interns.value.find((intern) => intern.id === resettingInternId.value) ?? null)
+const visibleInterns = computed(() => interns.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
+const pagination = computed(() => {
+  const total = interns.value.length
+  const lastPage = Math.max(1, Math.ceil(total / pageSize))
+  return {
+    current_page: currentPage.value,
+    last_page: lastPage,
+    per_page: pageSize,
+    total,
+    from: total ? (currentPage.value - 1) * pageSize + 1 : null,
+    to: total ? Math.min(currentPage.value * pageSize, total) : null,
+  }
+})
+const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
+
+const openCreateModal = () => {
+  createErrors.value = {}
+  createError.value = ''
+  createModalOpen.value = true
+}
+
+const closeCreateModal = () => {
+  if (creating.value) return
+  createModalOpen.value = false
+  newInternForm.password = ''
+  newInternForm.password_confirmation = ''
+  showNewInternPassword.value = false
+  showNewInternPasswordConfirmation.value = false
+}
 
 const loadInterns = async () => {
   loading.value = true
@@ -67,6 +104,7 @@ const loadInterns = async () => {
 
   try {
     interns.value = await listCompanyInterns()
+    currentPage.value = 1
   } catch (error) {
     loadError.value = apiErrorMessage(error, 'Unable to load intern accounts. Please try again.')
   } finally {
@@ -81,7 +119,6 @@ const replaceIntern = (updatedIntern) => {
 const createIntern = async () => {
   createErrors.value = {}
   createError.value = ''
-  successMessage.value = ''
 
   if (createFormElement.value && !createFormElement.value.checkValidity()) {
     createFormElement.value.reportValidity()
@@ -108,19 +145,23 @@ const createIntern = async () => {
       expected_hours_per_day: Number(newInternForm.expected_hours_per_day),
     })
     interns.value = [intern, ...interns.value]
+    currentPage.value = 1
     newInternForm.password = ''
     newInternForm.password_confirmation = ''
-    successMessage.value = 'Intern account created. Give the temporary password to the intern in person.'
+    showNewInternPassword.value = false
+    showNewInternPasswordConfirmation.value = false
+    createModalOpen.value = false
+    showAlert('success', 'Intern account created', 'Give the temporary password to the intern in person.')
   } catch (error) {
     createErrors.value = error?.response?.data?.errors ?? {}
     createError.value = apiErrorMessage(error, 'Unable to create this intern account. Please try again.')
+    showAlert('error', 'Intern account not created', createError.value)
   } finally {
     creating.value = false
   }
 }
 
 const startPlacementEdit = (intern) => {
-  successMessage.value = ''
   editingInternId.value = intern.id
   resettingInternId.value = null
   placementForm.start_date = intern.start_date ?? ''
@@ -134,7 +175,6 @@ const startPlacementEdit = (intern) => {
 const savePlacement = async (internId) => {
   placementErrors.value = {}
   placementError.value = ''
-  successMessage.value = ''
 
   if (placementForm.end_date <= placementForm.start_date) {
     placementErrors.value = { end_date: ['Target end date must be after the start date.'] }
@@ -155,17 +195,17 @@ const savePlacement = async (internId) => {
     })
     replaceIntern(updatedIntern)
     editingInternId.value = null
-    successMessage.value = 'Placement updated.'
+    showAlert('success', 'Placement updated', 'The intern’s work hours schedule was updated.')
   } catch (error) {
     placementErrors.value = error?.response?.data?.errors ?? {}
     placementError.value = apiErrorMessage(error, 'Unable to update this placement. Please try again.')
+    showAlert('error', 'Placement not updated', placementError.value)
   } finally {
     savingPlacement.value = false
   }
 }
 
 const startPasswordReset = (intern) => {
-  successMessage.value = ''
   resettingInternId.value = intern.id
   editingInternId.value = null
   resetForm.password = ''
@@ -177,7 +217,6 @@ const startPasswordReset = (intern) => {
 const savePasswordReset = async (internId) => {
   resetErrors.value = {}
   resetError.value = ''
-  successMessage.value = ''
 
   if (resetForm.password !== resetForm.password_confirmation) {
     resetErrors.value = { password_confirmation: ['Passwords must match.'] }
@@ -191,10 +230,11 @@ const savePasswordReset = async (internId) => {
     resetForm.password = ''
     resetForm.password_confirmation = ''
     resettingInternId.value = null
-    successMessage.value = 'Temporary password reset. Give the new password to the intern in person.'
+    showAlert('success', 'Password reset', 'Give the new temporary password to the intern in person.')
   } catch (error) {
     resetErrors.value = error?.response?.data?.errors ?? {}
     resetError.value = apiErrorMessage(error, 'Unable to reset this password. Please try again.')
+    showAlert('error', 'Password not reset', resetError.value)
   } finally {
     savingReset.value = false
   }
@@ -228,10 +268,13 @@ onMounted(loadInterns)
 </script>
 
 <template>
-  <main class="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
-    <PageHeader title="Intern accounts" description="Create intern logins, manage placement schedules, and reset forgotten passwords." />
+  <main class="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <PageHeader title="Intern accounts" description="Manage company interns, placement schedules, and password resets." />
+      <button type="button" class="app-button app-button--primary" data-testid="open-create-intern-modal" @click="openCreateModal">Create intern account</button>
+    </div>
 
-    <p v-if="successMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ successMessage }}</p>
+    <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
 
     <section class="space-y-4" aria-labelledby="intern-list-title">
       <div>
@@ -244,97 +287,57 @@ onMounted(loadInterns)
         <p class="text-sm text-red-800">{{ loadError }}</p>
         <button type="button" class="app-button app-button--secondary mt-3" data-testid="retry-company-interns" @click="loadInterns">Try again</button>
       </div>
-      <p v-else-if="!interns.length" class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">No intern accounts yet. Create an account below to get started.</p>
-
-      <div v-else class="space-y-4">
-        <article v-for="intern in interns" :key="intern.id" class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm" :data-testid="`company-intern-${intern.id}`">
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div class="min-w-0">
-              <h3 class="text-lg font-semibold text-slate-950">{{ intern.name }}</h3>
-              <p class="mt-1 break-all text-sm text-slate-600">{{ intern.email }}</p>
-            </div>
-            <span :class="intern.setup_complete ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900'" class="rounded-full border px-3 py-1 text-xs font-semibold">
-              {{ intern.setup_complete ? 'Setup complete' : 'Needs initial setup' }}
-            </span>
-          </div>
-
-          <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div><dt class="font-medium text-slate-500">Start date</dt><dd class="mt-1 text-slate-900">{{ intern.start_date }}</dd></div>
-            <div><dt class="font-medium text-slate-500">Target end date</dt><dd class="mt-1 text-slate-900">{{ intern.end_date }}</dd></div>
-            <div><dt class="font-medium text-slate-500">Work days</dt><dd class="mt-1 text-slate-900">{{ workDayLabels(intern.work_days ?? []) }}</dd></div>
-            <div><dt class="font-medium text-slate-500">Expected hours per work day</dt><dd class="mt-1 text-slate-900">{{ intern.expected_hours_per_day }} hours</dd></div>
-          </dl>
-
-          <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-            <button type="button" class="app-button app-button--secondary" :data-testid="`edit-placement-${intern.id}`" @click="startPlacementEdit(intern)">Update placement</button>
-            <button type="button" class="app-button app-button--secondary" :data-testid="`reset-password-${intern.id}`" @click="startPasswordReset(intern)">Reset password</button>
-          </div>
-
-          <form v-if="editingInternId === intern.id" class="space-y-4 rounded-lg bg-slate-50 p-4" :data-testid="`placement-form-${intern.id}`" @submit.prevent="savePlacement(intern.id)">
-            <h4 class="font-semibold text-slate-950">Update placement schedule</h4>
-            <div class="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label :for="`placement-start-date-${intern.id}`" class="block text-sm font-semibold text-slate-800">OJT start date</label>
-                <DatePickerField :id="`placement-start-date-${intern.id}`" v-model="placementForm.start_date" required :invalid="Boolean(placementErrors.start_date)" title="Choose OJT start date" description="Select when this placement begins." :test-id-prefix="`placement-start-date-${intern.id}`" />
-                <p v-if="placementErrors.start_date" class="mt-1 text-sm text-red-700" role="alert">{{ placementErrors.start_date[0] }}</p>
-              </div>
-              <div>
-                <label :for="`placement-end-date-${intern.id}`" class="block text-sm font-semibold text-slate-800">Target end date</label>
-                <DatePickerField :id="`placement-end-date-${intern.id}`" v-model="placementForm.end_date" required :min="minimumPlacementEndDate" :invalid="Boolean(placementErrors.end_date)" title="Choose target end date" description="Select a date after the start date." :test-id-prefix="`placement-end-date-${intern.id}`" />
-                <p v-if="placementErrors.end_date" class="mt-1 text-sm text-red-700" role="alert">{{ placementErrors.end_date[0] }}</p>
-              </div>
-            </div>
-            <fieldset class="rounded-lg border border-slate-200 bg-white p-4">
-              <legend class="px-1 text-sm font-semibold text-slate-800">Work days</legend>
-              <div class="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-7">
-                <label v-for="day in workDayOptions" :key="day.value" class="flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-2 text-sm font-semibold text-slate-700 has-[:checked]:border-slate-950 has-[:checked]:bg-slate-950 has-[:checked]:text-white">
-                  <input v-model="placementForm.work_days" type="checkbox" :value="day.value" class="sr-only" :aria-label="day.label" />
-                  <span>{{ day.label }}</span>
-                </label>
-              </div>
-              <p v-if="placementErrors.work_days" class="mt-2 text-sm text-red-700" role="alert">{{ placementErrors.work_days[0] }}</p>
-            </fieldset>
-            <div>
-              <label :for="`placement-expected-hours-${intern.id}`" class="block text-sm font-semibold text-slate-800">Expected hours per work day</label>
-              <input :id="`placement-expected-hours-${intern.id}`" v-model="placementForm.expected_hours_per_day" type="number" min="0.5" max="24" step="0.5" required class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200 sm:max-w-xs" />
-              <p v-if="placementErrors.expected_hours_per_day" class="mt-1 text-sm text-red-700" role="alert">{{ placementErrors.expected_hours_per_day[0] }}</p>
-            </div>
-            <p v-if="placementError" class="text-sm text-red-700" role="alert">{{ placementError }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button type="submit" class="app-button app-button--primary" :disabled="savingPlacement">{{ savingPlacement ? 'Saving...' : 'Save placement' }}</button>
-              <button type="button" class="app-button app-button--secondary" :disabled="savingPlacement" @click="cancelPlacementEdit">Cancel</button>
-            </div>
-          </form>
-
-          <form v-if="resettingInternId === intern.id" class="space-y-4 rounded-lg bg-slate-50 p-4" :data-testid="`reset-password-form-${intern.id}`" @submit.prevent="savePasswordReset(intern.id)">
-            <h4 class="font-semibold text-slate-950">Set a new temporary password</h4>
-            <p class="text-sm leading-5 text-slate-600">Give the new password to the intern in person. They must change it at their next sign-in.</p>
-            <div>
-              <label :for="`reset-password-${intern.id}`" class="block text-sm font-semibold text-slate-800">New temporary password</label>
-              <input :id="`reset-password-${intern.id}`" v-model="resetForm.password" type="password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
-              <PasswordRequirements :password="resetForm.password" :id-prefix="`reset-intern-${intern.id}`" />
-              <p v-if="resetErrors.password" class="mt-1 text-sm text-red-700" role="alert">{{ resetErrors.password[0] }}</p>
-            </div>
-            <div>
-              <label :for="`reset-password-confirmation-${intern.id}`" class="block text-sm font-semibold text-slate-800">Confirm temporary password</label>
-              <input :id="`reset-password-confirmation-${intern.id}`" v-model="resetForm.password_confirmation" type="password" required minlength="12" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
-              <p v-if="resetErrors.password_confirmation" class="mt-1 text-sm text-red-700" role="alert">{{ resetErrors.password_confirmation[0] }}</p>
-            </div>
-            <p v-if="resetError" class="text-sm text-red-700" role="alert">{{ resetError }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button type="submit" class="app-button app-button--primary" :disabled="savingReset">{{ savingReset ? 'Saving...' : 'Save temporary password' }}</button>
-              <button type="button" class="app-button app-button--secondary" :disabled="savingReset" @click="cancelPasswordReset">Cancel</button>
-            </div>
-          </form>
-        </article>
+      <p v-else-if="!interns.length" class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">No intern accounts yet. Create your first intern account to get started.</p>
+      <div v-else class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table class="min-w-[900px] w-full text-left text-sm">
+          <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th scope="col" class="px-4 py-3 font-semibold">Intern</th>
+              <th scope="col" class="px-4 py-3 font-semibold">Setup</th>
+              <th scope="col" class="px-4 py-3 font-semibold">Placement</th>
+              <th scope="col" class="px-4 py-3 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <tr v-for="intern in visibleInterns" :key="intern.id" :data-testid="'company-intern-' + intern.id">
+              <td class="px-4 py-4 align-top">
+                <p class="font-semibold text-slate-950">{{ intern.name }}</p>
+                <p class="mt-1 text-slate-600">{{ intern.email }}</p>
+              </td>
+              <td class="px-4 py-4 align-top">
+                <span :class="intern.setup_complete ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900'" class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold">
+                  {{ intern.setup_complete ? 'Setup complete' : 'Needs initial setup' }}
+                </span>
+              </td>
+              <td class="px-4 py-4 align-top text-slate-700">
+                <dl class="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div><dt class="text-xs text-slate-500">Start date</dt><dd class="mt-0.5">{{ intern.start_date }}</dd></div>
+                  <div><dt class="text-xs text-slate-500">Target end date</dt><dd class="mt-0.5">{{ intern.end_date }}</dd></div>
+                  <div><dt class="text-xs text-slate-500">Work days</dt><dd class="mt-0.5">{{ workDayLabels(intern.work_days ?? []) }}</dd></div>
+                  <div><dt class="text-xs text-slate-500">Hours per work day</dt><dd class="mt-0.5">{{ intern.expected_hours_per_day }} hours</dd></div>
+                </dl>
+              </td>
+              <td class="px-4 py-4 align-top">
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="app-button app-button--secondary" :data-testid="'edit-placement-' + intern.id" @click="startPlacementEdit(intern)">Update placement</button>
+                  <button type="button" class="app-button app-button--secondary" :data-testid="'reset-password-' + intern.id" @click="startPasswordReset(intern)">Reset password</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+
+      <PaginationControls
+        v-if="!loading && !loadError && interns.length"
+        :meta="pagination"
+        @change="currentPage = $event"
+      />
     </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="create-intern-title">
-      <h2 id="create-intern-title" class="text-xl font-semibold tracking-tight text-slate-950">Create intern account</h2>
-      <p class="mt-1 text-sm text-slate-600">Set the intern's initial login and placement schedule. Share the temporary password in person.</p>
-
-      <form ref="createFormElement" class="mt-5 space-y-5" data-testid="company-intern-create-form" @submit.prevent="createIntern">
+    <AppModal :open="createModalOpen" title="Create intern account" description="Set the intern's initial login and company placement schedule." :busy="creating" @close="closeCreateModal">
+      <form ref="createFormElement" class="space-y-5" data-testid="company-intern-create-form" @submit.prevent="createIntern">
+        <p class="text-sm text-slate-600">Share the temporary password with the intern in person. They must change it at their first sign-in.</p>
         <div class="grid gap-5 sm:grid-cols-2">
           <div>
             <label for="new-intern-first-name" class="block text-sm font-semibold text-slate-800">First name</label>
@@ -409,8 +412,69 @@ onMounted(loadInterns)
         </div>
 
         <p v-if="createError" class="text-sm text-red-700" role="alert">{{ createError }}</p>
-        <button type="submit" class="app-button app-button--primary" :disabled="creating">{{ creating ? 'Creating account...' : 'Create intern account' }}</button>
+        <div class="flex flex-wrap justify-end gap-2">
+          <button type="button" class="app-button app-button--secondary" :disabled="creating" @click="closeCreateModal">Cancel</button>
+          <button type="submit" class="app-button app-button--primary" :disabled="creating">{{ creating ? 'Creating account...' : 'Create intern account' }}</button>
+        </div>
       </form>
-    </section>
+    </AppModal>
+
+    <AppModal :open="editingInternId !== null" title="Update placement schedule" description="Manage this intern's company placement details." :busy="savingPlacement" @close="cancelPlacementEdit">
+      <form v-if="editingIntern" class="space-y-4" :data-testid="'placement-form-' + editingIntern.id" @submit.prevent="savePlacement(editingIntern.id)">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label :for="'placement-start-date-' + editingIntern.id" class="block text-sm font-semibold text-slate-800">OJT start date</label>
+            <DatePickerField :id="'placement-start-date-' + editingIntern.id" v-model="placementForm.start_date" required :invalid="Boolean(placementErrors.start_date)" title="Choose OJT start date" description="Select when this placement begins." :test-id-prefix="'placement-start-date-' + editingIntern.id" />
+            <p v-if="placementErrors.start_date" class="mt-1 text-sm text-red-700" role="alert">{{ placementErrors.start_date[0] }}</p>
+          </div>
+          <div>
+            <label :for="'placement-end-date-' + editingIntern.id" class="block text-sm font-semibold text-slate-800">Target end date</label>
+            <DatePickerField :id="'placement-end-date-' + editingIntern.id" v-model="placementForm.end_date" required :min="minimumPlacementEndDate" :invalid="Boolean(placementErrors.end_date)" title="Choose target end date" description="Select a date after the start date." :test-id-prefix="'placement-end-date-' + editingIntern.id" />
+            <p v-if="placementErrors.end_date" class="mt-1 text-sm text-red-700" role="alert">{{ placementErrors.end_date[0] }}</p>
+          </div>
+        </div>
+        <fieldset class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <legend class="px-1 text-sm font-semibold text-slate-800">Work days</legend>
+          <div class="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-7">
+            <label v-for="day in workDayOptions" :key="day.value" class="flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-2 text-sm font-semibold text-slate-700 has-[:checked]:border-slate-950 has-[:checked]:bg-slate-950 has-[:checked]:text-white">
+              <input v-model="placementForm.work_days" type="checkbox" :value="day.value" class="sr-only" :aria-label="day.label" />
+              <span>{{ day.label }}</span>
+            </label>
+          </div>
+          <p v-if="placementErrors.work_days" class="mt-2 text-sm text-red-700" role="alert">{{ placementErrors.work_days[0] }}</p>
+        </fieldset>
+        <div>
+          <label :for="'placement-expected-hours-' + editingIntern.id" class="block text-sm font-semibold text-slate-800">Expected hours per work day</label>
+          <input :id="'placement-expected-hours-' + editingIntern.id" v-model="placementForm.expected_hours_per_day" type="number" min="0.5" max="24" step="0.5" required class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200 sm:max-w-xs" />
+          <p v-if="placementErrors.expected_hours_per_day" class="mt-1 text-sm text-red-700" role="alert">{{ placementErrors.expected_hours_per_day[0] }}</p>
+        </div>
+        <p v-if="placementError" class="text-sm text-red-700" role="alert">{{ placementError }}</p>
+        <div class="flex flex-wrap justify-end gap-2">
+          <button type="button" class="app-button app-button--secondary" :disabled="savingPlacement" @click="cancelPlacementEdit">Cancel</button>
+          <button type="submit" class="app-button app-button--primary" :disabled="savingPlacement">{{ savingPlacement ? 'Saving...' : 'Save placement' }}</button>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal :open="resettingInternId !== null" title="Reset intern password" description="Give the new temporary password to the intern in person. They must change it at their next sign-in." :busy="savingReset" @close="cancelPasswordReset">
+      <form v-if="resettingIntern" class="space-y-4" :data-testid="'reset-password-form-' + resettingIntern.id" @submit.prevent="savePasswordReset(resettingIntern.id)">
+        <div>
+          <label :for="'reset-password-' + resettingIntern.id" class="block text-sm font-semibold text-slate-800">New temporary password</label>
+          <input :id="'reset-password-' + resettingIntern.id" v-model="resetForm.password" type="password" required minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <PasswordRequirements :password="resetForm.password" :id-prefix="'reset-intern-' + resettingIntern.id" />
+          <p v-if="resetErrors.password" class="mt-1 text-sm text-red-700" role="alert">{{ resetErrors.password[0] }}</p>
+        </div>
+        <div>
+          <label :for="'reset-password-confirmation-' + resettingIntern.id" class="block text-sm font-semibold text-slate-800">Confirm temporary password</label>
+          <input :id="'reset-password-confirmation-' + resettingIntern.id" v-model="resetForm.password_confirmation" type="password" required minlength="12" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          <p v-if="resetErrors.password_confirmation" class="mt-1 text-sm text-red-700" role="alert">{{ resetErrors.password_confirmation[0] }}</p>
+        </div>
+        <p v-if="resetError" class="text-sm text-red-700" role="alert">{{ resetError }}</p>
+        <div class="flex flex-wrap justify-end gap-2">
+          <button type="button" class="app-button app-button--secondary" :disabled="savingReset" @click="cancelPasswordReset">Cancel</button>
+          <button type="submit" class="app-button app-button--primary" :disabled="savingReset">{{ savingReset ? 'Saving...' : 'Save temporary password' }}</button>
+        </div>
+      </form>
+    </AppModal>
   </main>
 </template>

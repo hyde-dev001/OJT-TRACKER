@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CompanyRequirementsView from './CompanyRequirementsView.vue'
 import {
   approveCompanyRequirement,
@@ -22,6 +22,8 @@ vi.mock('../../services/ojt', () => ({
 vi.mock('../../services/api', () => ({
   apiErrorMessage: vi.fn(() => 'Unable to reach the API.'),
 }))
+
+enableAutoUnmount(afterEach)
 
 const intern = { id: 7, name: 'Taylor Lee', email: 'taylor.lee@example.com' }
 const requirement = {
@@ -61,6 +63,7 @@ const mountView = () => mount(CompanyRequirementsView, {
 
 describe('CompanyRequirementsView', () => {
   beforeEach(() => vi.resetAllMocks())
+  afterEach(() => vi.unstubAllGlobals())
 
   it('shows an empty state when the company has no intern accounts', async () => {
     listCompanyInterns.mockResolvedValueOnce([])
@@ -104,7 +107,7 @@ describe('CompanyRequirementsView', () => {
       due_date: '2026-10-20',
       is_required: true,
     })
-    expect(wrapper.text()).toContain('Requirement assigned')
+    expect(document.body.textContent).toContain('Requirement assigned')
   })
 
   it('requires a comment for changes, allows approval without a comment, and downloads proof through the service', async () => {
@@ -124,15 +127,36 @@ describe('CompanyRequirementsView', () => {
     await wrapper.get('[data-testid="request-changes-requirement-4"]').trigger('click')
     await flushPromises()
     expect(requestCompanyRequirementChanges).toHaveBeenCalledWith(7, 4, { comment: 'Please include the training date.' })
+    expect(document.body.textContent).toContain('Changes requested')
+    document.body.querySelector('[data-testid="alert-close"]')?.click()
 
     await wrapper.get('[data-testid="approve-requirement-4"]').trigger('click')
     await flushPromises()
     expect(approveCompanyRequirement).toHaveBeenCalledWith(7, 4, undefined)
+    expect(document.body.textContent).toContain('Requirement approved')
+    document.body.querySelector('[data-testid="alert-close"]')?.click()
 
     await wrapper.get('[data-testid="download-requirement-proof-4"]').trigger('click')
     await flushPromises()
     expect(downloadCompanyRequirementProof).toHaveBeenCalledWith(7, 4)
-    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to reach the API')
+    expect(document.body.querySelector('[data-testid="action-alert"]')?.textContent).toContain('Unable to reach the API')
+  })
+
+  it('lets the company account holder preview private requirement proof before review', async () => {
+    listCompanyInterns.mockResolvedValueOnce([intern])
+    listCompanyInternRequirements.mockResolvedValueOnce(page([requirement]))
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:company-requirement-proof'), revokeObjectURL: vi.fn() })
+    downloadCompanyRequirementProof.mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="view-requirement-proof-4"]').trigger('click')
+    await flushPromises()
+
+    expect(downloadCompanyRequirementProof).toHaveBeenCalledWith(7, 4)
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:company-requirement-proof')
+    wrapper.unmount()
   })
 
   it('offers a retry when requirement loading fails', async () => {
