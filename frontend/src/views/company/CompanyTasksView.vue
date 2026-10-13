@@ -317,15 +317,15 @@ onMounted(loadInterns)
             </div>
 
             <div v-if="task.submission_status === 'pending_review'" class="space-y-3 border-t border-slate-200 pt-4">
-              <p v-if="!viewedProofIds.has(task.id)" :id="`task-approval-proof-required-${task.id}`" class="text-sm text-slate-600">View the proof before approving.</p>
+              <p v-if="!viewedProofIds.has(task.id)" :id="`task-review-proof-required-${task.id}`" class="text-sm text-slate-600">View the proof before approving or requesting changes.</p>
               <div>
                 <label :for="`task-review-comment-${task.id}`" class="block text-sm font-semibold text-slate-800">Review comment <span class="font-normal text-slate-500">(optional for approval; required for changes)</span></label>
                 <textarea :id="`task-review-comment-${task.id}`" v-model="reviewComments[task.id]" rows="2" maxlength="5000" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" :aria-invalid="Boolean(reviewErrors[task.id])" :aria-describedby="reviewErrors[task.id] ? `task-review-comment-error-${task.id}` : undefined" />
                 <p v-if="reviewErrors[task.id]" :id="`task-review-comment-error-${task.id}`" :data-testid="`task-review-comment-error-${task.id}`" class="mt-1 text-sm text-red-700" role="alert">{{ reviewErrors[task.id] }}</p>
               </div>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="app-button app-button--primary" :disabled="Boolean(busyAction) || !viewedProofIds.has(task.id)" :aria-describedby="!viewedProofIds.has(task.id) ? `task-approval-proof-required-${task.id}` : undefined" :data-testid="`approve-task-${task.id}`" @click="review(task, 'approve')">{{ busyAction === `${task.id}:approve` ? 'Approving...' : 'Approve' }}</button>
-                <button type="button" class="app-button app-button--secondary" :disabled="Boolean(busyAction)" :data-testid="`request-changes-task-${task.id}`" @click="review(task, 'request-changes')">{{ busyAction === `${task.id}:request-changes` ? 'Saving...' : 'Request changes' }}</button>
+                <button type="button" class="app-button app-button--primary" :disabled="Boolean(busyAction) || !viewedProofIds.has(task.id)" :aria-describedby="!viewedProofIds.has(task.id) ? `task-review-proof-required-${task.id}` : undefined" :data-testid="`approve-task-${task.id}`" @click="review(task, 'approve')">{{ busyAction === `${task.id}:approve` ? 'Approving...' : 'Approve' }}</button>
+                <button type="button" class="app-button app-button--secondary" :disabled="Boolean(busyAction) || !viewedProofIds.has(task.id)" :aria-describedby="!viewedProofIds.has(task.id) ? `task-review-proof-required-${task.id}` : undefined" :data-testid="`request-changes-task-${task.id}`" @click="review(task, 'request-changes')">{{ busyAction === `${task.id}:request-changes` ? 'Saving...' : 'Request changes' }}</button>
               </div>
             </div>
           </article>

@@ -185,12 +185,18 @@ describe('CompanyTasksView', () => {
     requestCompanyTaskChanges.mockResolvedValueOnce({ ...task, submission_status: 'changes_requested' })
     approveCompanyTask.mockResolvedValueOnce({ ...task, submission_status: 'approved', status: 'completed' })
     vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:company-proof'), revokeObjectURL: vi.fn() })
-    downloadCompanyTaskProof.mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
+    downloadCompanyTaskProof.mockResolvedValue({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.get('[data-testid="approve-task-3"]').element.disabled).toBe(true)
-    expect(wrapper.text()).toContain('View the proof before approving.')
+    expect(wrapper.get('[data-testid="request-changes-task-3"]').element.disabled).toBe(true)
+    expect(wrapper.text()).toContain('View the proof before approving or requesting changes.')
+
+    await wrapper.get('[data-testid="view-task-proof-3"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="approve-task-3"]').element.disabled).toBe(false)
+    expect(wrapper.get('[data-testid="request-changes-task-3"]').element.disabled).toBe(false)
 
     await wrapper.get('[data-testid="request-changes-task-3"]').trigger('click')
     await flushPromises()
@@ -208,6 +214,7 @@ describe('CompanyTasksView', () => {
     await flushPromises()
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
     expect(wrapper.get('[data-testid="approve-task-3"]').element.disabled).toBe(false)
+    expect(wrapper.get('[data-testid="request-changes-task-3"]').element.disabled).toBe(false)
 
     await wrapper.get('[data-testid="approve-task-3"]').trigger('click')
     await flushPromises()
@@ -237,11 +244,13 @@ describe('CompanyTasksView', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="approve-task-3"]').element.disabled).toBe(true)
-    expect(wrapper.text()).toContain('View the proof before approving.')
+    expect(wrapper.get('[data-testid="request-changes-task-3"]').element.disabled).toBe(true)
+    expect(wrapper.text()).toContain('View the proof before approving or requesting changes.')
     await wrapper.get('[data-testid="view-task-proof-3"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.get('[data-testid="approve-task-3"]').element.disabled).toBe(true)
+    expect(wrapper.get('[data-testid="request-changes-task-3"]').element.disabled).toBe(true)
   })
 
   it('lets the company account holder preview private proof before reviewing it', async () => {
@@ -259,6 +268,7 @@ describe('CompanyTasksView', () => {
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
     expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:company-proof')
     expect(wrapper.get('[data-testid="approve-task-3"]').element.disabled).toBe(false)
+    expect(wrapper.get('[data-testid="request-changes-task-3"]').element.disabled).toBe(false)
     wrapper.unmount()
   })
 

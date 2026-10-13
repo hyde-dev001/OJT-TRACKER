@@ -181,12 +181,19 @@ describe('CompanyRequirementsView', () => {
     vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:company-requirement-proof'), revokeObjectURL: vi.fn() })
     downloadCompanyRequirementProof
       .mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
+      .mockResolvedValueOnce({ data: new Blob(['%PDF'], { type: 'application/pdf' }) })
       .mockRejectedValueOnce(new Error('offline'))
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.get('[data-testid="approve-requirement-4"]').element.disabled).toBe(true)
-    expect(wrapper.text()).toContain('View the proof before approving.')
+    expect(wrapper.get('[data-testid="request-changes-requirement-4"]').element.disabled).toBe(true)
+    expect(wrapper.text()).toContain('View the proof before approving or requesting changes.')
+
+    await wrapper.get('[data-testid="view-requirement-proof-4"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="approve-requirement-4"]').element.disabled).toBe(false)
+    expect(wrapper.get('[data-testid="request-changes-requirement-4"]').element.disabled).toBe(false)
 
     await wrapper.get('[data-testid="request-changes-requirement-4"]').trigger('click')
     expect(requestCompanyRequirementChanges).not.toHaveBeenCalled()
@@ -202,6 +209,7 @@ describe('CompanyRequirementsView', () => {
     await wrapper.get('[data-testid="view-requirement-proof-4"]').trigger('click')
     await flushPromises()
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+    expect(wrapper.get('[data-testid="request-changes-requirement-4"]').element.disabled).toBe(false)
     expect(wrapper.get('[data-testid="approve-requirement-4"]').element.disabled).toBe(false)
 
     await wrapper.get('[data-testid="approve-requirement-4"]').trigger('click')
@@ -231,6 +239,7 @@ describe('CompanyRequirementsView', () => {
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
     expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:company-requirement-proof')
     expect(wrapper.get('[data-testid="approve-requirement-4"]').element.disabled).toBe(false)
+    expect(wrapper.get('[data-testid="request-changes-requirement-4"]').element.disabled).toBe(false)
     wrapper.unmount()
   })
 
@@ -242,11 +251,13 @@ describe('CompanyRequirementsView', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="approve-requirement-4"]').element.disabled).toBe(true)
-    expect(wrapper.text()).toContain('View the proof before approving.')
+    expect(wrapper.get('[data-testid="request-changes-requirement-4"]').element.disabled).toBe(true)
+    expect(wrapper.text()).toContain('View the proof before approving or requesting changes.')
     await wrapper.get('[data-testid="view-requirement-proof-4"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.get('[data-testid="approve-requirement-4"]').element.disabled).toBe(true)
+    expect(wrapper.get('[data-testid="request-changes-requirement-4"]').element.disabled).toBe(true)
   })
 
   it('offers a retry when requirement loading fails', async () => {

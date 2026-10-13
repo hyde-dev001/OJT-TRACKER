@@ -7,7 +7,6 @@ import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
 import { apiErrorMessage } from '../../services/api'
 import {
-  endCompanyWorkLog,
   listCompanyInterns,
   listCompanyInternWorkLogs,
   startCompanyWorkLog,
@@ -109,21 +108,6 @@ const recordTimeIn = async () => {
   }
 }
 
-const recordTimeOut = async () => {
-  if (!selectedInternId.value || busyAction.value) return
-
-  clearActionFeedback()
-  busyAction.value = 'time-out'
-  try {
-    await endCompanyWorkLog(Number(selectedInternId.value), { break_minutes: Number(openTodayLog.value?.break_minutes ?? 0) })
-    if (await loadLogs(1)) showAlert('success', 'Time out recorded', 'The intern’s work session has been saved.')
-  } catch (error) {
-    showActionFailure(error, 'Unable to record time out. Please try again.')
-  } finally {
-    busyAction.value = ''
-  }
-}
-
 const openEdit = (log) => {
   clearActionFeedback()
   editError.value = ''
@@ -185,7 +169,7 @@ onMounted(loadInterns)
     <section class="space-y-4" aria-labelledby="attendance-title">
       <div>
         <h2 id="attendance-title" class="text-xl font-semibold tracking-tight text-slate-950">Intern attendance</h2>
-        <p class="mt-1 text-sm text-slate-600">The server records time in and time out. Break minutes are entered at time out.</p>
+        <p class="mt-1 text-sm text-slate-600">The server records time in and time out. Use Edit work hours to complete or correct a session, including its break minutes.</p>
       </div>
 
       <p v-if="loadingInterns" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading intern accounts...</p>
@@ -219,8 +203,7 @@ onMounted(loadInterns)
           </div>
           <template v-else-if="openTodayLog" class="space-y-3">
             <p class="text-sm text-slate-700">Time in: <span class="font-semibold">{{ formatTime(openTodayLog.time_in) }}</span></p>
-            <p class="text-sm text-slate-600">Time out keeps the saved break minutes (0 by default). Use Edit work hours below to update the break if needed.</p>
-            <button type="button" class="app-button app-button--primary" :data-testid="`time-out-${selectedIntern.id}`" :disabled="Boolean(busyAction)" @click="recordTimeOut">{{ busyAction === 'time-out' ? 'Recording time out...' : 'Time out' }}</button>
+            <p class="text-sm text-slate-600">Use Edit work hours below to enter the time out and any break minutes.</p>
           </template>
           <div v-else-if="!loadingLogs && !logsError && todayLog" class="rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
             One session is already recorded for today. You can edit its work hours below.

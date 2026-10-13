@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { todayInPhilippines } from '../../utils/dateBounds'
 import CompanyAttendanceView from './CompanyAttendanceView.vue'
 import {
-  endCompanyWorkLog,
   listCompanyInterns,
   listCompanyInternWorkLogs,
   startCompanyWorkLog,
@@ -13,7 +12,6 @@ import {
 enableAutoUnmount(afterEach)
 
 vi.mock('../../services/ojt', () => ({
-  endCompanyWorkLog: vi.fn(),
   listCompanyInterns: vi.fn(),
   listCompanyInternWorkLogs: vi.fn(),
   startCompanyWorkLog: vi.fn(),
@@ -144,7 +142,7 @@ describe('CompanyAttendanceView', () => {
     expect(wrapper.text()).toContain('In progress')
   })
 
-  it('records time out with zero break minutes and leaves corrections to edit work hours', async () => {
+  it('closes an open session through Edit work hours without a quick time-out button', async () => {
     const openLog = {
       id: 15,
       work_date: todayInPhilippines(),
@@ -154,21 +152,31 @@ describe('CompanyAttendanceView', () => {
       rendered_minutes: null,
       status: 'in_progress',
     }
+    const completedLog = { ...openLog, time_out: '17:00', break_minutes: 30, rendered_minutes: 510, status: 'completed' }
     listCompanyInterns.mockResolvedValueOnce([intern])
-    listCompanyInternWorkLogs.mockResolvedValueOnce(page([openLog])).mockResolvedValueOnce(page([
-      { ...openLog, time_out: '17:00', break_minutes: 30, rendered_minutes: 510, status: 'completed' },
-    ]))
-    endCompanyWorkLog.mockResolvedValueOnce({ ...openLog, time_out: '17:00', status: 'completed' })
+    listCompanyInternWorkLogs.mockResolvedValueOnce(page([openLog])).mockResolvedValueOnce(page([completedLog]))
+    updateCompanyWorkLog.mockResolvedValueOnce(completedLog)
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.find('#attendance-break-minutes').exists()).toBe(false)
-    await wrapper.get('[data-testid="time-out-7"]').trigger('click')
+    expect(wrapper.find('[data-testid="time-out-7"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Use Edit work hours below to enter the time out and any break minutes.')
+    await wrapper.get('[data-testid="edit-work-log-15"]').trigger('click')
+    await wrapper.get('#edit-work-log-time-out').setValue('17:00')
+    await wrapper.get('#edit-work-log-break-minutes').setValue('30')
+    await wrapper.get('[data-testid="edit-work-log-form"]').trigger('submit')
     await flushPromises()
 
-    expect(endCompanyWorkLog).toHaveBeenCalledWith(7, { break_minutes: 0 })
+    expect(updateCompanyWorkLog).toHaveBeenCalledWith(7, 15, {
+      work_date: todayInPhilippines(),
+      time_in: '08:00',
+      time_out: '17:00',
+      break_minutes: 30,
+    })
     expect(listCompanyInternWorkLogs).toHaveBeenCalledTimes(2)
-    expect(document.body.textContent).toContain('Time out recorded')
+    expect(wrapper.text()).toContain('Completed')
+    expect(document.body.textContent).toContain('Work hours updated')
   })
 
   it('edits completed work hours without sending derived values and shows success', async () => {

@@ -321,15 +321,15 @@ onMounted(loadInterns)
             </div>
 
             <div v-if="requirement.submission_status === 'pending_review'" class="space-y-3 border-t border-slate-200 pt-4">
-              <p v-if="!viewedProofIds.has(requirement.id)" :id="`requirement-approval-proof-required-${requirement.id}`" class="text-sm text-slate-600">View the proof before approving.</p>
+              <p v-if="!viewedProofIds.has(requirement.id)" :id="`requirement-review-proof-required-${requirement.id}`" class="text-sm text-slate-600">View the proof before approving or requesting changes.</p>
               <div>
                 <label :for="`requirement-review-comment-${requirement.id}`" class="block text-sm font-semibold text-slate-800">Review comment <span class="font-normal text-slate-500">(optional for approval; required for changes)</span></label>
                 <textarea :id="`requirement-review-comment-${requirement.id}`" v-model="reviewComments[requirement.id]" rows="2" maxlength="5000" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" :aria-invalid="Boolean(reviewErrors[requirement.id])" :aria-describedby="reviewErrors[requirement.id] ? `requirement-review-comment-error-${requirement.id}` : undefined" />
                 <p v-if="reviewErrors[requirement.id]" :id="`requirement-review-comment-error-${requirement.id}`" :data-testid="`requirement-review-comment-error-${requirement.id}`" class="mt-1 text-sm text-red-700" role="alert">{{ reviewErrors[requirement.id] }}</p>
               </div>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="app-button app-button--primary" :disabled="Boolean(busyAction) || !viewedProofIds.has(requirement.id)" :aria-describedby="!viewedProofIds.has(requirement.id) ? `requirement-approval-proof-required-${requirement.id}` : undefined" :data-testid="`approve-requirement-${requirement.id}`" @click="review(requirement, 'approve')">{{ busyAction === `${requirement.id}:approve` ? 'Approving...' : 'Approve' }}</button>
-                <button type="button" class="app-button app-button--secondary" :disabled="Boolean(busyAction)" :data-testid="`request-changes-requirement-${requirement.id}`" @click="review(requirement, 'request-changes')">{{ busyAction === `${requirement.id}:request-changes` ? 'Saving...' : 'Request changes' }}</button>
+                <button type="button" class="app-button app-button--primary" :disabled="Boolean(busyAction) || !viewedProofIds.has(requirement.id)" :aria-describedby="!viewedProofIds.has(requirement.id) ? `requirement-review-proof-required-${requirement.id}` : undefined" :data-testid="`approve-requirement-${requirement.id}`" @click="review(requirement, 'approve')">{{ busyAction === `${requirement.id}:approve` ? 'Approving...' : 'Approve' }}</button>
+                <button type="button" class="app-button app-button--secondary" :disabled="Boolean(busyAction) || !viewedProofIds.has(requirement.id)" :aria-describedby="!viewedProofIds.has(requirement.id) ? `requirement-review-proof-required-${requirement.id}` : undefined" :data-testid="`request-changes-requirement-${requirement.id}`" @click="review(requirement, 'request-changes')">{{ busyAction === `${requirement.id}:request-changes` ? 'Saving...' : 'Request changes' }}</button>
               </div>
             </div>
           </article>
