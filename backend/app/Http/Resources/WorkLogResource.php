@@ -15,7 +15,7 @@ class WorkLogResource extends JsonResource
             'internship_id' => $this->internship_id,
             'work_date' => $this->work_date?->toDateString(),
             'time_in' => substr((string) $this->time_in, 0, 5),
-            'time_out' => substr((string) $this->time_out, 0, 5),
+            'time_out' => $this->time_out === null ? null : substr((string) $this->time_out, 0, 5),
             'break_minutes' => $this->break_minutes,
             'rendered_minutes' => $this->rendered_minutes,
             'accomplishment_summary' => $this->accomplishment_summary,

@@ -2,9 +2,10 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
   authenticated: { type: Boolean, default: false },
+  user: { type: Object, default: null },
 })
 
 const emit = defineEmits(['close'])
@@ -59,7 +60,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', handleKeydown))
 </script>
 
 <template>
-  <div v-if="open" class="mobile-navigation-backdrop" data-testid="mobile-navigation-backdrop" @click="handleBackdropClick">
+  <div v-if="props.open" class="mobile-navigation-backdrop" data-testid="mobile-navigation-backdrop" @click="handleBackdropClick">
     <aside ref="drawer" class="mobile-navigation-drawer" data-testid="mobile-navigation-drawer" role="dialog" aria-modal="true" aria-label="Mobile navigation">
       <div class="mobile-navigation-drawer__header">
         <p class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Menu</p>
@@ -67,7 +68,19 @@ onBeforeUnmount(() => document.removeEventListener('keydown', handleKeydown))
       </div>
 
       <nav class="mobile-navigation-drawer__links" aria-label="Mobile navigation links">
-        <template v-if="authenticated">
+        <template v-if="props.authenticated && props.user?.role === 'company'">
+          <RouterLink to="/company/interns" class="mobile-navigation-link" @click="close(false)">Intern accounts</RouterLink>
+          <RouterLink to="/company/attendance" class="mobile-navigation-link" @click="close(false)">Attendance</RouterLink>
+          <RouterLink to="/company/tasks" class="mobile-navigation-link" @click="close(false)">Tasks</RouterLink>
+          <RouterLink to="/company/requirements" class="mobile-navigation-link" @click="close(false)">Requirements</RouterLink>
+        </template>
+        <template v-else-if="props.authenticated && props.user?.role === 'intern'">
+          <RouterLink to="/intern/overview" class="mobile-navigation-link" @click="close(false)">Overview</RouterLink>
+          <RouterLink to="/intern/work-hours" class="mobile-navigation-link" @click="close(false)">Work Hours</RouterLink>
+          <RouterLink to="/intern/tasks" class="mobile-navigation-link" @click="close(false)">Tasks</RouterLink>
+          <RouterLink to="/intern/requirements" class="mobile-navigation-link" @click="close(false)">Requirements</RouterLink>
+        </template>
+        <template v-else-if="props.authenticated">
           <RouterLink to="/student/overview" class="mobile-navigation-link" @click="close(false)">Overview</RouterLink>
           <RouterLink to="/student/work-hours" class="mobile-navigation-link" @click="close(false)">Work Hours</RouterLink>
           <RouterLink to="/student/tasks" class="mobile-navigation-link" @click="close(false)">Tasks</RouterLink>
@@ -79,6 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', handleKeydown))
           <div class="mobile-navigation-divider" aria-hidden="true"></div>
           <RouterLink to="/login" class="mobile-navigation-link" @click="close(false)">Sign in</RouterLink>
           <RouterLink to="/register" class="mobile-navigation-link mobile-navigation-link--primary" @click="close(false)">Create student account</RouterLink>
+          <RouterLink to="/register/company" class="mobile-navigation-link" @click="close(false)">Register company account</RouterLink>
         </template>
       </nav>
     </aside>

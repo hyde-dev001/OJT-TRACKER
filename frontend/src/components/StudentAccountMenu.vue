@@ -10,6 +10,21 @@ const emit = defineEmits(['sign-out'])
 const open = ref(false)
 const container = ref(null)
 const trigger = ref(null)
+const accountLink = computed(() => props.user?.role === 'company'
+  ? '/company/account'
+  : props.user?.role === 'intern'
+    ? '/intern/account'
+    : '/student/profile')
+const accountLinkLabel = computed(() => props.user?.role === 'company'
+  ? 'Change password'
+  : props.user?.role === 'intern'
+    ? 'OJT account'
+    : 'Profile & Password')
+const accountMenuLabel = computed(() => props.user?.role === 'company'
+  ? 'Company account menu'
+  : props.user?.role === 'intern'
+    ? 'Intern account menu'
+    : 'Student account menu')
 const initials = computed(() => {
   const words = (props.user?.name ?? '').trim().split(/\s+/).filter(Boolean)
   return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'U'
@@ -75,18 +90,19 @@ onBeforeUnmount(() => {
     </button>
 
     <Transition name="account-menu">
-      <div v-if="open" id="student-account-menu" data-testid="account-menu" class="account-menu" role="menu" aria-label="Student account menu">
+      <div v-if="open" id="student-account-menu" data-testid="account-menu" class="account-menu" role="menu" :aria-label="accountMenuLabel">
         <div class="account-menu__summary">
           <span class="account-avatar account-avatar--menu" aria-hidden="true">{{ initials }}</span>
           <div class="min-w-0">
             <p class="truncate font-semibold text-slate-950">{{ props.user?.name || 'Student' }}</p>
+            <p v-if="props.user?.role === 'company' && props.user.company_name" data-testid="account-company-name" class="truncate text-sm text-slate-600"><span class="font-medium">Company:</span> {{ props.user.company_name }}</p>
             <p class="truncate text-sm text-slate-600">{{ props.user?.email || 'Student account' }}</p>
           </div>
         </div>
         <div class="account-menu__items">
-          <RouterLink to="/student/profile" role="menuitem" data-testid="account-profile" class="account-menu__item" @click="chooseProfile">
+          <RouterLink :to="accountLink" role="menuitem" data-testid="account-profile" class="account-menu__item" @click="chooseProfile">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="7" r="4" /></svg>
-            <span>Profile &amp; Password</span>
+            <span>{{ accountLinkLabel }}</span>
           </RouterLink>
           <button type="button" role="menuitem" data-testid="account-sign-out" class="account-menu__item account-menu__item--danger" @click="chooseSignOut">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M21 19V5a2 2 0 0 0-2-2h-6" /></svg>

@@ -9,20 +9,20 @@ use Illuminate\Support\Collection;
 final class OjtProgressAssistant
 {
     /** @return array<string, mixed> */
-    public function build(Internship $internship, ?CarbonImmutable $today = null): array
+    public function build(Internship $internship, ?CarbonImmutable $today = null, string $routePrefix = 'student'): array
     {
         $today ??= CarbonImmutable::today(config('app.timezone'));
         $today = $today->startOfDay();
         $timezone = $today->getTimezone()->getName();
         $progress = $internship->progressSummary();
         $renderedMinutes = (int) $progress['completed_minutes'];
-        $requiredMinutes = (int) $internship->required_minutes;
-        $remainingMinutes = max($requiredMinutes - $renderedMinutes, 0);
-        $paceAvailable = $this->hasValidPaceSchedule($internship);
+        $requiredMinutes = $internship->required_minutes === null ? null : (int) $internship->required_minutes;
+        $remainingMinutes = $requiredMinutes === null ? null : max($requiredMinutes - $renderedMinutes, 0);
+        $paceAvailable = $requiredMinutes !== null && $this->hasValidPaceSchedule($internship);
         $remainingScheduledDays = $paceAvailable
             ? $this->remainingScheduledDays($internship, $today, $timezone)
             : 0;
-        $requiredDailyMinutes = ! $paceAvailable
+        $requiredDailyMinutes = ! $paceAvailable || $remainingMinutes === null
             ? null
             : ($remainingMinutes === 0
                 ? 0
@@ -33,7 +33,7 @@ final class OjtProgressAssistant
             ? $this->status(
                 $internship,
                 $today,
-                $remainingMinutes,
+                $remainingMinutes ?? 0,
                 $remainingScheduledDays,
                 $requiredDailyMinutes,
                 $timezone,
@@ -61,9 +61,11 @@ final class OjtProgressAssistant
                 'required_minutes' => $requiredMinutes,
                 'rendered_minutes' => $renderedMinutes,
                 'remaining_minutes' => $remainingMinutes,
-                'percentage' => $requiredMinutes > 0
-                    ? min(100, (int) round(($renderedMinutes / $requiredMinutes) * 100))
-                    : 0,
+                'percentage' => $requiredMinutes === null
+                    ? null
+                    : ($requiredMinutes > 0
+                        ? min(100, (int) round(($renderedMinutes / $requiredMinutes) * 100))
+                        : 0),
             ],
             'pace' => [
                 'status' => $status,
@@ -79,6 +81,7 @@ final class OjtProgressAssistant
                 $status,
                 $remainingMinutes,
                 $timezone,
+                $routePrefix,
             ),
             'completion' => $this->completion($requirements, $remainingMinutes),
         ];
@@ -184,13 +187,26 @@ final class OjtProgressAssistant
         Collection $tasks,
         CarbonImmutable $today,
         string $status,
-        int $remainingMinutes,
+        ?int $remainingMinutes,
         string $timezone,
+        string $routePrefix,
     ): array {
         $items = [];
         $endDate = $this->date($internship->end_date, $timezone);
 
-        if ($remainingMinutes > 0 && $endDate && $today->gt($endDate)) {
+        if ($remainingMinutes === null) {
+            $items[] = [
+                'type' => 'setup',
+                'id' => null,
+                'title' => 'Enter your required OJT hours.',
+                'due_date' => null,
+                'reason' => 'required_hours_not_set',
+                'priority' => 1,
+                'href' => $routePrefix === 'intern' ? '/intern/account' : '/student/profile',
+            ];
+        }
+
+        if ($remainingMinutes !== null && $remainingMinutes > 0 && $endDate && $today->gt($endDate)) {
             $items[] = [
                 'type' => 'work_hours',
                 'id' => null,
@@ -198,9 +214,9 @@ final class OjtProgressAssistant
                 'due_date' => $endDate->toDateString(),
                 'reason' => 'deadline_passed',
                 'priority' => 1,
-                'href' => '/student/work-hours',
+                'href' => '/'.$routePrefix.'/work-hours',
             ];
-        } elseif ($status === 'at_risk') {
+        } elseif ($remainingMinutes !== null && $status === 'at_risk') {
             $items[] = [
                 'type' => 'pace',
                 'id' => null,
@@ -208,7 +224,7 @@ final class OjtProgressAssistant
                 'due_date' => null,
                 'reason' => 'at_risk',
                 'priority' => 4,
-                'href' => '/student/work-hours',
+                'href' => '/'.$routePrefix.'/work-hours',
             ];
         }
 
@@ -247,7 +263,7 @@ final class OjtProgressAssistant
                 $dueDate?->toDateString(),
                 $classification['reason'],
                 $classification['priority'],
-                '/student/requirements',
+                '/'.$routePrefix.'/requirements',
             );
         }
 
@@ -275,7 +291,7 @@ final class OjtProgressAssistant
                 $dueDate?->toDateString(),
                 $classification['reason'],
                 $priority,
-                '/student/tasks',
+                '/'.$routePrefix.'/tasks',
             );
         }
 
@@ -300,8 +316,8 @@ final class OjtProgressAssistant
         ];
     }
 
-    /** @return array{ready: bool, remaining_minutes: int, incomplete_required_requirements: array<int, array<string, mixed>>, blockers: array<int, string>} */
-    private function completion(Collection $requirements, int $remainingMinutes): array
+    /** @return array{ready: bool, remaining_minutes: int|null, incomplete_required_requirements: array<int, array<string, mixed>>, blockers: array<int, string>} */
+    private function completion(Collection $requirements, ?int $remainingMinutes): array
     {
         $incompleteRequired = $requirements
             ->filter(static fn ($requirement): bool => $requirement->is_required && $requirement->status !== 'completed')
@@ -318,7 +334,9 @@ final class OjtProgressAssistant
             ->all();
         $blockers = [];
 
-        if ($remainingMinutes > 0) {
+        if ($remainingMinutes === null) {
+            $blockers[] = 'required_hours_not_set';
+        } elseif ($remainingMinutes > 0) {
             $blockers[] = 'hours_remaining';
         }
 

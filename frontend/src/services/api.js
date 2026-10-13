@@ -1,6 +1,12 @@
 import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const configuredBaseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const localHostname = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? window.location.hostname
+  : null
+const baseURL = localHostname
+  ? configuredBaseURL.replace(/\/\/(?:localhost|127\.0\.0\.1)(?=[:/])/, `//${localHostname}`)
+  : configuredBaseURL
 const backendURL = baseURL.replace(/\/api\/?$/, '')
 
 const api = axios.create({

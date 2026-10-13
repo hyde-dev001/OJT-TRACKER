@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { apiErrorMessage } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import { canRedirectWithinWorkspace, defaultWorkspacePath } from '../utils/accountNavigation'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -18,10 +19,11 @@ const submit = async () => {
   formError.value = ''
 
   try {
-    await authStore.login(form)
-    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/student/')
+    const user = await authStore.login(form)
+    const role = user?.role ?? 'student'
+    const redirect = canRedirectWithinWorkspace(route.query.redirect, role)
       ? route.query.redirect
-      : '/student/overview'
+      : defaultWorkspacePath(role)
     await router.push(redirect)
   } catch (error) {
     errors.value = error?.response?.data?.errors ?? {}
@@ -38,7 +40,7 @@ const submit = async () => {
         <span data-testid="auth-brand-label" class="auth-brand__label text-sm font-semibold tracking-tight text-slate-950">OJT Progress Tracker</span>
       </RouterLink>
       <h1 id="login-title" class="mt-8 text-3xl font-semibold tracking-tight text-slate-950">Welcome back</h1>
-      <p class="mt-2 text-sm leading-6 text-slate-600">Sign in to track your internship progress and personal work.</p>
+      <p class="mt-2 text-sm leading-6 text-slate-600">Sign in to continue to your OJT workspace.</p>
 
       <form class="mt-6 space-y-5" @submit.prevent="submit">
         <div>
@@ -67,6 +69,10 @@ const submit = async () => {
       <p class="mt-6 text-center text-sm text-slate-600">
         New student?
         <RouterLink to="/register" class="font-semibold text-slate-950 underline underline-offset-4">Create an account</RouterLink>
+      </p>
+      <p class="mt-3 text-center text-sm text-slate-600">
+        Setting up a company account?
+        <RouterLink to="/register/company" class="font-semibold text-slate-950 underline underline-offset-4">Register your company</RouterLink>
       </p>
     </section>
   </main>

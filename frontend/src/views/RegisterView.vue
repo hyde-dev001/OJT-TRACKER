@@ -316,6 +316,11 @@ function nextDate(value) {
           </div>
         </form>
       </div>
+
+      <p class="mt-6 text-center text-sm text-slate-600">
+        Setting up OJT accounts for a company?
+        <RouterLink to="/register/company" data-testid="company-registration-link" class="font-semibold text-slate-950 underline underline-offset-4">Register a company account</RouterLink>
+      </p>
     </section>
   </main>
 </template>

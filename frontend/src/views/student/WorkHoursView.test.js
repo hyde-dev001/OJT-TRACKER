@@ -79,7 +79,7 @@ describe('WorkHoursView', () => {
     await wrapper.get('[data-testid="add-work-log"]').trigger('click')
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
     expect(document.body.querySelector('#work-date')).not.toBeNull()
-    expect(document.body.querySelector('#work-date').value).toContain('Sep')
+    expect(document.body.querySelector('#work-date').value).not.toBe('')
 
     document.body.querySelector('#work-date').click()
     await flushPromises()
@@ -102,6 +102,7 @@ describe('WorkHoursView', () => {
     const wrapper = mount(WorkHoursView)
     await flushPromises()
     await wrapper.get('[data-testid="add-work-log"]').trigger('click')
+    const selectedDate = document.body.querySelector('#work-date').value
 
     setInput('#time-in', '08:00')
     setInput('#time-out', '17:00')
@@ -109,7 +110,7 @@ describe('WorkHoursView', () => {
     document.body.querySelector('[role="dialog"] button[type="submit"]').click()
     await flushPromises()
 
-    expect(document.body.querySelector('#work-date').value).toContain('Sep')
+    expect(document.body.querySelector('#work-date').value).toBe(selectedDate)
     expect(document.body.textContent).toContain('Time out is required.')
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
   })

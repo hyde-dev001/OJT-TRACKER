@@ -20,6 +20,12 @@ class RequirementResource extends JsonResource
             'status' => $this->status,
             'student_notes' => $this->student_notes,
             'completed_at' => $this->completed_at?->toISOString(),
+            'submission_status' => $this->submission_status,
+            'proof_available' => $this->proof_path !== null,
+            'submission_comment' => $this->submission_comment,
+            'review_comment' => $this->review_comment,
+            'submitted_at' => $this->submitted_at?->toISOString(),
+            'reviewed_at' => $this->reviewed_at?->toISOString(),
             'is_overdue' => $this->isOverdue(),
         ];
     }

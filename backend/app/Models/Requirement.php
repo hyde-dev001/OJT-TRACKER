@@ -10,6 +10,8 @@ class Requirement extends Model
 {
     use HasFactory;
 
+    protected $attributes = ['submission_status' => 'not_submitted'];
+
     protected $fillable = [
         'internship_id',
         'title',
@@ -19,7 +21,15 @@ class Requirement extends Model
         'status',
         'student_notes',
         'completed_at',
+        'submission_status',
+        'proof_path',
+        'submission_comment',
+        'review_comment',
+        'submitted_at',
+        'reviewed_at',
     ];
+
+    protected $hidden = ['proof_path'];
 
     protected function casts(): array
     {
@@ -27,6 +37,8 @@ class Requirement extends Model
             'due_date' => 'date',
             'is_required' => 'boolean',
             'completed_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
     }
 

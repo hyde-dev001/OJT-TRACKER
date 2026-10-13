@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Str;
 
+$sessionPath = env('SESSION_PATH', '/');
+// A filesystem path here keeps CSRF cookies from reaching the API routes.
+$sessionPath = is_string($sessionPath) && Str::startsWith($sessionPath, '/') ? $sessionPath : '/';
+
 return [
 
     /*
@@ -143,7 +147,7 @@ return [
     |
     */
 
-    'path' => env('SESSION_PATH', '/'),
+    'path' => $sessionPath,
 
     /*
     |--------------------------------------------------------------------------

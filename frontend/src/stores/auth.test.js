@@ -21,7 +21,7 @@ describe('auth store', () => {
 
   it('restores the current student from the API', async () => {
     api.get.mockResolvedValue({
-      data: { user: { id: 1, name: 'Student', email: 'student@example.com' } },
+      data: { user: { id: 1, name: 'Student', email: 'student@example.com', role: 'student', must_change_password: false } },
     })
 
     const store = useAuthStore()
@@ -29,7 +29,8 @@ describe('auth store', () => {
 
     expect(store.user.name).toBe('Student')
     expect(store.isAuthenticated).toBe(true)
-    expect('role' in store).toBe(false)
+    expect(store.user.role).toBe('student')
+    expect(store.user.must_change_password).toBe(false)
   })
 
   it('bootstraps CSRF before logging in', async () => {
@@ -61,6 +62,49 @@ describe('auth store', () => {
 
     expect(api.post).toHaveBeenCalledWith('/register', { name: 'New Student', email: 'new@example.com' })
     expect(store.user.email).toBe('new@example.com')
+  })
+
+  it('bootstraps CSRF before registering a company account', async () => {
+    ensureCsrfCookie.mockResolvedValue({})
+    api.post.mockResolvedValue({
+      data: { user: { id: 3, name: 'Jamie Santos', email: 'owner@example.com', role: 'company' } },
+    })
+    const store = useAuthStore()
+    const details = {
+      company_name: 'Northwind Studio',
+      first_name: 'Jamie',
+      last_name: 'Santos',
+      email: 'owner@example.com',
+      password: 'StrongPassword1!',
+      password_confirmation: 'StrongPassword1!',
+    }
+
+    await store.registerCompany(details)
+
+    expect(ensureCsrfCookie).toHaveBeenCalledOnce()
+    expect(api.post).toHaveBeenCalledWith('/company/register', details)
+    expect(store.user.role).toBe('company')
+    expect(store.bootstrapped).toBe(true)
+  })
+
+  it('changes an intern password and stores the returned setup state', async () => {
+    ensureCsrfCookie.mockResolvedValue({})
+    api.put.mockResolvedValue({
+      data: { user: { id: 8, role: 'intern', must_change_password: false } },
+    })
+    const store = useAuthStore()
+    store.user = { id: 8, name: 'Taylor Lee', role: 'intern', must_change_password: true }
+    const details = {
+      current_password: 'TemporaryPass1!',
+      password: 'PermanentPassword2!',
+      password_confirmation: 'PermanentPassword2!',
+    }
+
+    await store.changeInternPassword(details)
+
+    expect(ensureCsrfCookie).toHaveBeenCalledOnce()
+    expect(api.put).toHaveBeenCalledWith('/intern/password', details)
+    expect(store.user).toEqual({ id: 8, name: 'Taylor Lee', role: 'intern', must_change_password: false })
   })
 
   it('updates the authenticated profile', async () => {

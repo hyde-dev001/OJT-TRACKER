@@ -60,4 +60,33 @@ describe('StudentAccountMenu', () => {
 
     wrapper.unmount()
   })
+
+  it.each([
+    ['company', '/company/account', 'Change password'],
+    ['intern', '/intern/account', 'OJT account'],
+  ])('shows %s accounts their own account link', async (role, destination, label) => {
+    const wrapper = mount(StudentAccountMenu, {
+      props: { user: { ...user, role } },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+
+    await wrapper.get('[data-testid="account-trigger"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="account-profile"]').attributes('href')).toBe(destination)
+    expect(wrapper.get('[data-testid="account-profile"]').text()).toContain(label)
+    expect(wrapper.find('a[href="/student/profile"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows the company name in the company account holder menu', async () => {
+    const wrapper = mount(StudentAccountMenu, {
+      props: { user: { ...user, role: 'company', company_name: 'Northwind Studio' } },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+
+    await wrapper.get('[data-testid="account-trigger"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('Northwind Studio')
+    wrapper.unmount()
+  })
 })

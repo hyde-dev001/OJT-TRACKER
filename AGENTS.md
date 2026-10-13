@@ -4,7 +4,9 @@
 
 ## Project context
 
-This repository is a focused two-week student web application project.
+This repository is a focused two-week OJT web application project with an
+existing personal student tracker and a separate company-managed onboarding
+path.
 
 Before substantial work, read:
 
@@ -29,18 +31,31 @@ Do not assume the SoleSpace architecture. This project does **not** use React, T
 
 ## Product guardrail
 
-The project must remain focused on one student-intern monitoring workflow.
+The project must remain focused on student OJT tracking and the approved
+company-managed onboarding slice.
 
 Primary target user:
 - Student Intern
 
 Supporting actor:
-- None. The student is the sole application user.
+- One company account holder per company, who creates and manages that
+  company's intern accounts.
 
 Frozen core features:
 1. Work-Hour Progress Tracking
 2. Task & Requirement Monitoring
 3. Progress & Needs-Attention Assistant
+4. Company registration and intern account onboarding (Slice 1)
+5. Company attendance and read-only intern work hours (Slice 2)
+6. Company tasks, requirements, private proof, and review (Slice 3)
+
+The personal student workflow remains independent and unchanged. Slice 1 adds
+company-created intern accounts, temporary password replacement/reset, intern-
+entered required OJT hours, and company-owned placement dates/schedules. Slice
+2 adds one daily company-recorded attendance session and read-only intern work
+hours. Slice 3 adds separate company-managed task and requirement assignment,
+private image/PDF proof submission, and company approval/change requests.
+Preserve the personal student task and requirement workflows.
 
 Do not expand the system into a school management system, LMS, HR system, payroll system, or generic administration suite.
 
@@ -215,6 +230,15 @@ Validate:
 
 Prefer integer minute storage.
 
+For company-managed OJT, allow one session per intern per workday. Time in and
+time out are captured by the backend in the configured application timezone;
+the company account holder enters break minutes at time out and may correct an
+open or completed entry's date, times, and break. Recalculate rendered minutes
+and status server-side. Company-managed interns are read-only for attendance;
+open sessions have no duration and do not count toward progress. These records
+do not certify official attendance or completion. Keep personal student work
+logging unchanged.
+
 ### Internship schedule and dates
 
 - Registration requires a target end date after the required OJT start date.
@@ -254,10 +278,12 @@ Use explicit readable workflow states when behavior differs by state.
 
 Do not collapse important workflows into ambiguous booleans.
 
-Tasks are personal productivity records and do not block completion readiness;
-do not add a task-required flag. Requirements use incomplete and completed
-states; completed requirements reject direct edit/delete and are changed
-through the existing reopen action.
+Personal student tasks are productivity records and do not block completion
+readiness; do not add a task-required flag. Personal requirements use
+incomplete and completed states; completed requirements reject direct
+edit/delete and are changed through the existing reopen action. Company task
+and requirement items reuse the existing tables but follow their approved
+submission/review states; do not change the personal student transitions.
 
 ---
 
@@ -320,7 +346,9 @@ Minimum expectations:
 - server-side validation;
 - safe mass assignment;
 - no hardcoded secrets;
-- scoped access to student-owned records;
+- scoped access to student-owned records and company-owned intern records;
+- server-side company ownership checks for intern management, password resets,
+  and attendance actions;
 - appropriate CORS;
 - no debug information exposed to users.
 

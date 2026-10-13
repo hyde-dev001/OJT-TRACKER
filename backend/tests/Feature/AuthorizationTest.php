@@ -36,6 +36,30 @@ class AuthorizationTest extends TestCase
         $this->assertNotSame($student->id, $otherStudent->id);
     }
 
+    public function test_company_and_intern_accounts_cannot_use_personal_student_routes(): void
+    {
+        foreach (['company', 'intern'] as $role) {
+            $account = User::factory()->create(['role' => $role]);
+            Internship::factory()->create(['student_id' => $account->id]);
+
+            $this->studentRequest($account)
+                ->getJson('/api/student/overview')
+                ->assertForbidden();
+            $this->studentRequest($account)
+                ->putJson('/api/profile', [])
+                ->assertForbidden();
+        }
+    }
+
+    public function test_company_accounts_cannot_use_intern_account_routes(): void
+    {
+        $company = User::factory()->create(['role' => 'company']);
+
+        $this->stateful()->actingAs($company)
+            ->getJson('/api/intern/internship')
+            ->assertForbidden();
+    }
+
     public function test_student_cannot_use_another_students_records_over_http(): void
     {
         [$student, , , $otherInternship] = $this->context();

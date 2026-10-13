@@ -2,11 +2,13 @@
 
 ## Product direction
 
-OJT Progress Tracker is a calm, student-first personal tracker for rendered OJT hours, personal tasks, and internship requirements. It is Cal-inspired in restraint and clarity, but it is not a scheduling product and must not copy scheduling-specific Cal.com UI.
+OJT Progress Tracker keeps the existing calm personal tracker for students and adds a separate company-managed intern onboarding path. It is Cal-inspired in restraint and clarity, but it is not a scheduling product and must not copy scheduling-specific Cal.com UI.
 
 Primary user: Student Intern.
 
-The interface should help a student answer three questions quickly:
+Supporting actor: one company account holder per company.
+
+The personal student interface should help a student answer these questions quickly:
 
 1. How many rendered OJT hours have I logged?
 2. What personal task or internship requirement needs attention?
@@ -52,18 +54,18 @@ Use a 4px spacing rhythm, standard form controls of at least 40px height, and to
 
 ## Information architecture
 
-The authenticated navigation is intentionally small:
+Keep navigation small and role-specific:
 
-- Overview
-- Work Hours
-- Tasks
-- Requirements
-- Account menu for Profile & Password and Sign Out
+- Student: Overview, Work Hours, Tasks, Requirements, and account menu.
+- Company account holder: intern account management, Attendance, Tasks,
+  Requirements, and account menu.
+- Company-managed intern: OJT account setup, read-only Work Hours, Tasks,
+  Requirements, and account menu.
 
 ### Authenticated account area
 
 - Account details belong in a compact avatar dropdown.
-- The full student name must not occupy permanent navbar space.
+- The full user's name must not occupy permanent navbar space.
 - Sign out belongs inside the account menu and keeps confirmation behavior.
 - The theme toggle lives beside the account control.
 
@@ -74,9 +76,10 @@ The authenticated navigation is intentionally small:
 - When no manual choice exists, the operating-system preference is used.
 - Dark mode uses layered neutral surfaces and adjusted semantic colors rather than simple color inversion.
 
-Overview is the authenticated landing destination because it gives the
-student the primary progress signal and the next actionable context. Work
-Hours remains the detailed source for daily rendered logs.
+Overview is the personal student's authenticated landing destination because
+it gives the student the primary progress signal and next actionable context.
+Work Hours remains the detailed source for that student's daily rendered logs.
+Company and company-managed intern accounts land in their role-specific pages.
 
 ## Overview
 
@@ -105,9 +108,10 @@ The assistant uses inclusive configured workdays, does not apply holidays,
 and never claims official school/company completion. A pace-unavailable state
 must not be presented as At risk merely because pace inputs are missing.
 
-The loaded Overview offers one `Export Summary` action for a print-friendly,
-white A4 snapshot of the student's current tracked progress. It is for personal
-monitoring and clearly disclaims official attendance or completion verification.
+The loaded personal-student and company-managed-intern Overviews offer one
+`Export Summary` action for a print-friendly, white A4 snapshot of the signed-in
+user's current tracked progress. It is for personal monitoring and clearly
+disclaims official attendance or completion verification.
 
 Public navigation may include Home, About, and Sign in/Register. The product brand is a visual identity element; it must not unexpectedly redirect an authenticated student away from the current workflow.
 
@@ -142,9 +146,29 @@ If the OJT start date is in the future, disable Add work log and show:
 
 Do not create contradictory date bounds where minimum is after maximum.
 
-## Registration
+### Company Attendance and intern Work Hours
 
-Registration is a centered two-step setup flow without the public navbar.
+The company account holder records one attendance session per intern per
+workday. Time in uses the server's Manila-local date and time. Time out keeps
+the session's saved break value, which defaults to zero; the account holder can
+correct the date, times, and break through Edit work hours. The backend
+validates the session and calculates rendered duration. No delete action is
+available.
+
+Company-managed interns see their backend-calculated completed hours and
+paginated work sessions in a read-only Work Hours page. An open session is
+labeled In progress and has no rendered duration. When required OJT hours are
+unset, show completed hours and explain that a progress percentage is
+unavailable; do not invent a percentage. The page has no time-in, time-out, or
+edit controls. Company-managed records do not certify official attendance or
+completion.
+
+Keep personal student Work Hours behavior unchanged.
+
+## Registration and onboarding
+
+Student registration remains a centered two-step setup flow without the public
+navbar.
 
 Step 1: name, optional suffix, email, password, confirmation. Check email availability before advancing; an existing email stays on Step 1 with a field-level message.
 
@@ -162,6 +186,20 @@ Passwords show live requirement feedback for:
 
 Show each rule as met/not met with text and color.
 
+Company registration is a separate self-service form for company name, account
+holder name, email, and password. It activates immediately and has one account
+holder, with no administrator approval or company verification.
+
+The company account holder creates an intern account with a unique email and a
+temporary password, then shares that password in person. The intern must
+replace it at first sign-in. If forgotten, the company account holder can set
+a new temporary password, which the intern must replace at the next sign-in.
+The intern supplies required OJT hours; the company account holder controls the
+placement dates, work days, and expected daily hours. The intern sees these
+placement values as read-only. Keep these accounts independent from personal
+student registration. Company attendance and read-only intern Work Hours are
+specified above.
+
 ## Tasks
 
 Tasks are personal productivity items. Use a compact list with readable states:
@@ -176,6 +214,14 @@ Large task lists use server-backed pagination and status filters without
 changing the personal workflow.
 
 Use due-date visibility and an explicit Overdue label when appropriate. Do not turn tasks into a second work-hours dashboard.
+
+Company-managed Tasks use a separate page and service route. The account
+holder selects an intern, creates an assignment, views its submission state,
+downloads submitted proof, and approves or requests changes. Interns view their
+assigned tasks and submit one image or PDF up to 10 MB with an optional
+comment. Approval completes the task; a change request leaves it open and
+allows proof replacement. Company assignments have no edit or delete actions.
+Keep this workflow separate from personal task actions and completion rules.
 
 ## Requirements
 
@@ -193,6 +239,26 @@ Due dates and the required/optional distinction should be visible in the list. P
 Large requirement lists use server-backed pagination. Filters include All,
 Incomplete, Completed, and Overdue; overdue means an incomplete requirement
 with a due date before today in the Philippine business timezone.
+
+Company-managed Requirements use separate company and intern pages. Company
+account holders create a requirement for a selected intern, set its existing
+Required/Optional flag, review proof, and approve or request changes. Interns
+submit one image or PDF up to 10 MB with an optional comment and can replace
+proof after a change request. Approval completes the requirement. Keep this
+workflow separate from personal requirement editing, notes, and reopen actions.
+
+Proof files stay on Laravel's private local disk and are downloaded only
+through authenticated, ownership-scoped routes. Submission history, assignment
+editing/deletion and public proof links are outside this slice.
+
+Company account holders and company-managed interns use an in-app notification
+bell for assignment, proof-submission, review, due-today, and overdue events.
+Personal students use the same bell for a missed scheduled workday without a
+work log and due-today/overdue task and requirement reminders. Selecting a
+notification opens the relevant authorized page; company pages select the
+matching intern. A personal item created with today's due date is notified
+immediately. Mark all as read preserves history. Keep notification loading and
+read failures recoverable. Personal tracking workflows remain unchanged.
 
 ## Feedback and state coverage
 
@@ -224,7 +290,9 @@ Avoid permanent green inline banners for routine actions when a short success al
 - generic or empty dashboard shells;
 - decorative charts or arbitrary combined progress scores;
 - gradients, glassmorphism, excessive rounded cards, and large marketing footers;
-- coordinator, supervisor, approval, review, notification, analytics, or AI UI;
+- extra company roles or staff, administrator approval, company verification,
+  invitations, submission history, or public proof links;
+- email, push, real-time notification delivery, analytics, or AI UI;
 - client-side progress calculations, arbitrary combined scores, or claims of
   official completion;
 

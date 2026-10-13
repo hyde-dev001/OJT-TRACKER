@@ -32,6 +32,8 @@ class UserFactory extends Factory
             'first_name' => $firstName,
             'last_name' => $lastName,
             'suffix' => null,
+            'role' => 'student',
+            'must_change_password' => false,
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),

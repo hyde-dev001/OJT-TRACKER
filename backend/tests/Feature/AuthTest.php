@@ -18,7 +18,12 @@ class AuthTest extends TestCase
         $this->stateful()->getJson('/api/user')->assertUnauthorized();
     }
 
-    public function test_login_returns_the_authenticated_student_without_a_role(): void
+    public function test_new_users_default_to_personal_student_role(): void
+    {
+        $this->assertSame('student', User::factory()->create()->role);
+    }
+
+    public function test_login_returns_the_authenticated_student_with_account_setup_state(): void
     {
         $user = User::factory()->create([
             'email' => 'student@example.com',
@@ -32,7 +37,8 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.email', $user->email)
-            ->assertJsonMissingPath('user.role')
+            ->assertJsonPath('user.role', 'student')
+            ->assertJsonPath('user.must_change_password', false)
             ->assertJsonMissingPath('user.password');
 
         $this->assertAuthenticatedAs($user);
@@ -68,11 +74,13 @@ class AuthTest extends TestCase
             'end_date' => '2026-09-30',
             'work_days' => [1, 2, 3, 4, 5],
             'expected_hours_per_day' => 8,
+            'role' => 'company',
         ])
             ->assertCreated()
             ->assertJsonPath('user.name', 'New Student Jr.')
             ->assertJsonPath('user.email', 'new.student@example.com')
-            ->assertJsonMissingPath('user.role')
+            ->assertJsonPath('user.role', 'student')
+            ->assertJsonPath('user.must_change_password', false)
             ->assertJsonMissingPath('user.password');
 
         $student = User::where('email', 'new.student@example.com')->firstOrFail();

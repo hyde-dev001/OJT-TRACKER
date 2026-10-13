@@ -12,6 +12,7 @@ class InternshipFactory extends Factory
     {
         return [
             'student_id' => User::factory(),
+            'company_id' => null,
             'required_minutes' => 30000,
             'start_date' => today()->subDays(30),
             'end_date' => today()->addMonths(3),
