@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Task;
 use App\Models\Requirement;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\UploadedFile;
@@ -16,8 +17,13 @@ use Throwable;
 
 class WorkItemProofs
 {
-    public function replace(HasMany $items, int $itemId, UploadedFile $proof, ?string $comment): Model
-    {
+    public function replace(
+        HasMany $items,
+        int $itemId,
+        UploadedFile $proof,
+        ?string $comment,
+        ?Closure $afterSaved = null,
+    ): Model {
         $newPath = $proof->store('work-item-proofs', 'local');
         if (! is_string($newPath)) {
             throw new RuntimeException('Could not store work item proof.');
@@ -26,7 +32,7 @@ class WorkItemProofs
         $oldPath = null;
 
         try {
-            $item = DB::transaction(function () use ($items, $itemId, $newPath, $comment, &$oldPath): Model {
+            $item = DB::transaction(function () use ($items, $itemId, $newPath, $comment, $afterSaved, &$oldPath): Model {
                 $item = $items->whereKey($itemId)->lockForUpdate()->firstOrFail();
                 abort_unless(
                     in_array($item->submission_status, ['not_submitted', 'changes_requested'], true),
@@ -48,6 +54,10 @@ class WorkItemProofs
 
                 if (! $item->update($data)) {
                     throw new RuntimeException('Could not save work item proof.');
+                }
+
+                if ($afterSaved !== null) {
+                    $afterSaved($item);
                 }
 
                 return $item;

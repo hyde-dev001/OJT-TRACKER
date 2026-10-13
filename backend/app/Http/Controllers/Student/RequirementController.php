@@ -8,8 +8,10 @@ use App\Http\Requests\UpdateRequirementRequest;
 use App\Http\Resources\RequirementResource;
 use App\Models\Internship;
 use App\Models\Requirement;
+use App\Services\CompanyInternNotifications;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class RequirementController extends Controller
@@ -42,7 +44,7 @@ class RequirementController extends Controller
         );
     }
 
-    public function store(StoreRequirementRequest $request): RequirementResource
+    public function store(StoreRequirementRequest $request, CompanyInternNotifications $notifications): RequirementResource
     {
         $data = $request->validated();
         $requestedInternship = Internship::findOrFail($data['internship_id']);
@@ -52,7 +54,18 @@ class RequirementController extends Controller
         $data['internship_id'] = $internship->id;
         $data['status'] = 'incomplete';
 
-        return new RequirementResource(Requirement::create($data));
+        $student = $request->user();
+        $requirement = DB::transaction(function () use ($data, $student, $notifications): Requirement {
+            $requirement = Requirement::create($data);
+
+            if ($requirement->due_date?->toDateString() === today('Asia/Manila')->toDateString()) {
+                $notifications->deadline($requirement, $student, 'due_today');
+            }
+
+            return $requirement;
+        });
+
+        return new RequirementResource($requirement);
     }
 
     public function show(Requirement $requirement): RequirementResource

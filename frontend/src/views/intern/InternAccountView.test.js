@@ -69,7 +69,7 @@ describe('InternAccountView', () => {
   })
 
   it('updates only required hours and shows placement values read-only', async () => {
-    api.get.mockResolvedValue({ data: { data: { ...internship, required_minutes: 30000, required_hours: 500 } } })
+    api.get.mockResolvedValue({ data: { data: { ...internship, company_name: 'Northwind Studio', required_minutes: 30000, required_hours: 500 } } })
     api.put.mockResolvedValue({
       data: { data: { ...internship, required_minutes: 36000, required_hours: 600 } },
     })
@@ -77,6 +77,7 @@ describe('InternAccountView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('2026-11-02')
+    expect(wrapper.text()).toContain('Northwind Studio')
     expect(wrapper.text()).toContain('Mon, Wed, Fri')
     expect(wrapper.text()).toContain('7.5 hours')
     expect(wrapper.find('input#placement-start-date').exists()).toBe(false)

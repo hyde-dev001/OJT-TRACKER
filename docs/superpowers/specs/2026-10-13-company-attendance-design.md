@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Add live attendance recording to the company-managed OJT flow. A company account holder starts and ends one work session per intern per workday, enters break minutes at time-out, and can correct a saved session. The intern can view attendance and work-hour progress but cannot change attendance.
+Add live attendance recording to the company-managed OJT flow. A company account holder starts and ends one work session per intern per workday, and can correct a saved session. Break minutes default to zero at time-out and can be adjusted through Edit work hours. The intern can view attendance and work-hour progress but cannot change attendance.
 
 The existing personal student work-log workflow remains unchanged. This slice does not add task or requirement assignment, proof uploads, or review workflows.
 
@@ -16,7 +16,7 @@ The existing personal student work-log workflow remains unchanged. This slice do
 - The company account holder can edit an intern's saved work-hour entries, including completed sessions, by correcting the work date, time-in, time-out, and break minutes.
 - One session is allowed per intern per workday.
 - Starting a session records the server's current date and time in the configured application timezone (`Asia/Manila` by default).
-- Ending a session records the server's current time. The account holder enters the total break minutes at time-out.
+- Ending a session records the server's current time and keeps the session's saved break minutes, which default to zero. The account holder can adjust break minutes through Edit work hours.
 - The backend validates time ordering and break duration and calculates rendered minutes. Client-supplied rendered minutes or status are ignored.
 - Attendance can be recorded before the intern enters required OJT hours. Completed minutes are available, but percentage progress stays unavailable until the target is set.
 - Intern attendance access is read-only. An intern cannot start, end, edit, or delete a session.
@@ -38,7 +38,7 @@ All sessions are same-day sessions. A time-out must be later than time-in, and b
 
 1. The account holder opens company attendance and selects one of their interns.
 2. The account holder selects **Time in**. The backend verifies company ownership, placement dates, and the configured workday, then creates today's open session.
-3. At the end of duty, the account holder selects **Time out** and enters total break minutes.
+3. At the end of duty, the account holder selects **Time out**. The saved break value defaults to zero and can be corrected through **Edit work hours**.
 4. The backend records the current time, validates the duration and break, calculates rendered minutes, and closes the session.
 5. A duplicate start for the same intern and workday returns a field-level validation error. The database unique key remains the final concurrency guard.
 
@@ -92,7 +92,7 @@ This slice does not add multiple sessions per day, overnight sessions, attendanc
 1. A company account holder can start one session for an owned intern on a configured workday within the placement period.
 2. The backend captures the work date and time-in; clients cannot supply those values for a normal time-in action.
 3. A second session cannot be started for the same intern and workday, including under concurrent requests.
-4. A company account holder can end today's open session and enter break minutes; the backend captures time-out and calculates rendered minutes.
+4. A company account holder can end today's open session; the backend captures time-out and calculates rendered minutes with the saved break value, which defaults to zero and can be corrected through **Edit work hours**.
 5. Invalid time ordering and invalid break minutes are rejected with field-level errors.
 6. An open session has no rendered minutes and does not count toward completed hours or progress.
 7. A company account holder can edit open and completed work-hour entries for their own interns; corrections recalculate duration and cannot directly set derived fields.

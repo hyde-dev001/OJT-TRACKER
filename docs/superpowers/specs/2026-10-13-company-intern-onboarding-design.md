@@ -42,7 +42,7 @@ Company account passwords follow the existing registration password policy.
 
 The new company account is active after successful registration. No external company verification is required in this project slice.
 
-The company account holder creates each intern account with the intern's name, unique email, and a temporary password. The account holder gives the password to the intern in person. The app stores only the password hash and never returns the password after account creation.
+The company account holder creates each intern account with the intern's first and last name, optional suffix, age, unique email, and a temporary password. Suffix choices match student registration (`Jr.`, `Sr.`, `II`, `III`, `IV`, or `V`). Age is required as a whole number from 1 through 120. The account holder gives the password to the intern in person. The app stores only the password hash and never returns the password after account creation.
 
 The account holder also sets the company's placement data for that intern:
 
@@ -132,7 +132,7 @@ This slice includes:
 
 Later slices add:
 
-1. live company time-in/time-out, one session per intern per work day, break minutes at time-out, company corrections, and student read-only hours;
+1. live company time-in/time-out, one session per intern per work day, company-entered break corrections, and student read-only hours;
 2. company-created tasks and requirements, private image/PDF submissions, resubmission after change requests, and company approval.
 
 This slice does not add additional company staff, an HR role, an administrator or approval role, company verification, account linking, email invitations or email-based password recovery, attendance recording, task assignment, proof upload, or review endpoints.
@@ -142,14 +142,16 @@ This slice does not add additional company staff, an HR role, an administrator o
 1. Existing student registration still creates a personal tracker and preserves its current student workflow.
 2. A user can register a company account and is routed to the company workspace after registration.
 3. A company account holder can create multiple intern accounts with unique emails and company-owned placement data.
-4. A company account holder cannot view or modify another company's interns or records, including by changing request identifiers.
-5. An intern account cannot be created with an email already used by a personal or company-managed account.
-6. An intern signing in with a temporary password must replace it before using the company-managed student workspace.
-7. After replacing the temporary password, the intern can enter and later update required OJT hours.
-8. The company account holder can set and update placement dates, recurring work days, and expected daily hours; the intern cannot change those values.
-9. An intern who has not entered required OJT hours is clearly marked as needing initial setup, and no progress percentage is shown until the target exists.
-10. A self-registered student account remains independent and is never silently linked to a company.
-11. A company account holder can reset only their own intern's password; the reset invalidates active sessions and requires the intern to choose a new password at next sign-in.
+4. Company intern creation requires an age from 1 through 120 and supports the same optional suffix values as student registration.
+5. The company name is visible in the company account holder's profile menu and the intern's OJT account setup.
+6. A company account holder cannot view or modify another company's interns or records, including by changing request identifiers.
+7. An intern account cannot be created with an email already used by a personal or company-managed account.
+8. An intern signing in with a temporary password must replace it before using the company-managed student workspace.
+9. After replacing the temporary password, the intern can enter and later update required OJT hours.
+10. The company account holder can set and update placement dates, recurring work days, and expected daily hours; the intern cannot change those values.
+11. An intern who has not entered required OJT hours is clearly marked as needing initial setup, and no progress percentage is shown until the target exists.
+12. A self-registered student account remains independent and is never silently linked to a company.
+13. A company account holder can reset only their own intern's password; the reset invalidates active sessions and requires the intern to choose a new password at next sign-in.
 
 ## Verification plan
 

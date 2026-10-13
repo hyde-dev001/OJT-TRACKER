@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import AppModal from '../../components/AppModal.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
@@ -14,6 +15,7 @@ const pagination = ref(null)
 const currentPage = ref(1)
 const loading = ref(true)
 const error = ref('')
+const viewingLog = ref(null)
 
 async function load() {
   loading.value = true
@@ -84,12 +86,28 @@ onMounted(load)
         <EmptyState v-if="!logs.length" class="mt-5" title="No work sessions yet" message="Work sessions recorded by your company will appear here." />
         <div v-else class="mt-5 space-y-3">
           <article v-for="log in logs" :key="log.id" :data-testid="`intern-work-log-${log.id}`" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <h3 class="font-semibold text-slate-950">{{ formatDate(log.work_date) }}</h3>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h3 class="font-semibold text-slate-950">{{ formatDate(log.work_date) }}</h3>
+              <button type="button" class="app-button app-button--secondary" :data-testid="`view-work-log-${log.id}`" :aria-label="`View work session details for ${formatDate(log.work_date)}`" @click="viewingLog = log">View</button>
+            </div>
             <p class="mt-2 text-sm text-slate-600">{{ formatTime(log.time_in) }} - {{ log.time_out ? formatTime(log.time_out) : 'In progress' }}<template v-if="log.time_out && log.rendered_minutes != null"> · {{ formatDuration(log.rendered_minutes) }}</template></p>
           </article>
         </div>
         <PaginationControls :meta="pagination" class="mt-6" @change="changePage" />
       </section>
+
+      <AppModal v-if="viewingLog" :open="Boolean(viewingLog)" title="Work session details" description="Review the time and break recorded for this session." @close="viewingLog = null">
+        <dl class="grid gap-4 text-sm sm:grid-cols-2">
+          <div><dt class="font-semibold text-slate-500">Date</dt><dd class="mt-1 text-slate-900">{{ formatDate(viewingLog.work_date) }}</dd></div>
+          <div><dt class="font-semibold text-slate-500">Time in</dt><dd class="mt-1 text-slate-900">{{ formatTime(viewingLog.time_in) }}</dd></div>
+          <div><dt class="font-semibold text-slate-500">Time out</dt><dd class="mt-1 text-slate-900">{{ viewingLog.time_out ? formatTime(viewingLog.time_out) : 'In progress' }}</dd></div>
+          <div><dt class="font-semibold text-slate-500">Break</dt><dd class="mt-1 text-slate-900">{{ viewingLog.break_minutes == null ? '—' : `${viewingLog.break_minutes} minutes` }}</dd></div>
+          <div><dt class="font-semibold text-slate-500">Rendered hours</dt><dd class="mt-1 text-slate-900">{{ viewingLog.rendered_minutes == null ? 'Not available while in progress' : formatDuration(viewingLog.rendered_minutes) }}</dd></div>
+        </dl>
+        <template #footer>
+          <button type="button" class="app-button app-button--secondary" data-testid="close-work-session-details" @click="viewingLog = null">Close</button>
+        </template>
+      </AppModal>
     </template>
   </main>
 </template>

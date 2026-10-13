@@ -25,8 +25,13 @@ class CompanyRegistrationTest extends TestCase
             ->assertJsonPath('user.name', 'Jamie Santos')
             ->assertJsonPath('user.email', 'owner@northwind.example')
             ->assertJsonPath('user.role', 'company')
+            ->assertJsonPath('user.company_name', 'Northwind Studio')
             ->assertJsonPath('user.must_change_password', false)
             ->assertJsonMissingPath('user.password');
+
+        $this->getJson('/api/user')
+            ->assertOk()
+            ->assertJsonPath('user.company_name', 'Northwind Studio');
 
         $accountHolder = User::where('email', 'owner@northwind.example')->firstOrFail();
 

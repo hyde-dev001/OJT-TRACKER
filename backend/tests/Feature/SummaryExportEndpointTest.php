@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Company;
 use App\Models\Internship;
 use App\Models\Requirement;
 use App\Models\User;
@@ -24,9 +25,19 @@ class SummaryExportEndpointTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_guest_cannot_download_the_student_summary(): void
+    public function test_guest_cannot_download_a_summary(): void
     {
         $this->getJson('/api/student/overview/export')->assertUnauthorized();
+        $this->getJson('/api/intern/overview/export')->assertUnauthorized();
+    }
+
+    public function test_personal_student_cannot_use_the_intern_summary_route(): void
+    {
+        $student = User::factory()->create();
+
+        $this->stateful()->actingAs($student)
+            ->getJson('/api/intern/overview/export')
+            ->assertForbidden();
     }
 
     public function test_student_can_download_a_pdf_with_a_manila_date_filename(): void
@@ -57,6 +68,44 @@ class SummaryExportEndpointTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
         $this->assertCount(1, $internshipQueries);
         $this->assertContains($student->id, $internshipQueries[0]->bindings);
+        $this->assertNotContains($otherInternship->id, $internshipQueries[0]->bindings);
+        $this->assertNotSame($ownInternship->id, $otherInternship->id);
+    }
+
+    public function test_company_managed_intern_can_download_only_their_own_summary(): void
+    {
+        $intern = User::factory()->create([
+            'role' => 'intern',
+            'must_change_password' => false,
+        ]);
+        $other = User::factory()->create([
+            'role' => 'intern',
+            'must_change_password' => false,
+        ]);
+        $ownInternship = Internship::factory()->create([
+            'student_id' => $intern->id,
+            'company_id' => Company::factory()->create()->id,
+        ]);
+        $otherInternship = Internship::factory()->create([
+            'student_id' => $other->id,
+            'company_id' => Company::factory()->create()->id,
+        ]);
+        $internshipQueries = [];
+        DB::listen(function (QueryExecuted $query) use (&$internshipQueries): void {
+            if (str_contains($query->sql, 'internships') && str_contains($query->sql, 'student_id')) {
+                $internshipQueries[] = $query;
+            }
+        });
+
+        $response = $this->stateful()->actingAs($intern)->get(
+            '/api/intern/overview/export?student_id='.$other->id.'&internship_id='.$otherInternship->id,
+        );
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $this->assertCount(1, $internshipQueries);
+        $this->assertContains($intern->id, $internshipQueries[0]->bindings);
         $this->assertNotContains($otherInternship->id, $internshipQueries[0]->bindings);
         $this->assertNotSame($ownInternship->id, $otherInternship->id);
     }

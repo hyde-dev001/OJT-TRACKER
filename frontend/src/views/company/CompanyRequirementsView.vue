@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ActionAlert from '../../components/ActionAlert.vue'
+import AppModal from '../../components/AppModal.vue'
 import DatePickerField from '../../components/DatePickerField.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
@@ -11,6 +13,7 @@ import {
   approveCompanyRequirement,
   createCompanyInternRequirement,
   downloadCompanyRequirementProof,
+  getCompanyInternRequirement,
   listCompanyInterns,
   listCompanyInternRequirements,
   requestCompanyRequirementChanges,
@@ -18,8 +21,12 @@ import {
 import { formatDate } from '../../utils/formatters'
 
 const interns = ref([])
+const route = useRoute()
+const router = useRouter()
 const selectedInternId = ref('')
 const requirements = ref([])
+const targetRequirement = ref(null)
+const targetError = ref('')
 const pagination = ref(null)
 const currentPage = ref(1)
 const loadingInterns = ref(true)
@@ -29,27 +36,57 @@ const requirementsError = ref('')
 const fieldErrors = ref({})
 const actionAlert = ref({ open: false, variant: 'success', title: '', message: '' })
 const creating = ref(false)
+const assignmentModalOpen = ref(false)
 const busyAction = ref('')
 const downloadingRequirementId = ref(null)
 const previewingRequirementId = ref(null)
 const proofPreview = ref({ open: false, title: '', file: null })
+const viewedProofIds = ref(new Set())
 const reviewComments = reactive({})
 const reviewErrors = reactive({})
 const form = reactive({ title: '', description: '', due_date: '', is_required: true })
 
 const selectedIntern = computed(() => interns.value.find((intern) => intern.id === Number(selectedInternId.value)) ?? null)
+const visibleRequirements = computed(() => targetRequirement.value && !requirements.value.some((requirement) => requirement.id === targetRequirement.value.id)
+  ? [targetRequirement.value, ...requirements.value]
+  : requirements.value)
 const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
+const openAssignmentModal = () => {
+  fieldErrors.value = {}
+  assignmentModalOpen.value = true
+}
+const closeAssignmentModal = () => {
+  if (!creating.value) assignmentModalOpen.value = false
+}
 
 const loadRequirements = async (page = 1) => {
   if (!selectedInternId.value) return false
 
+  viewedProofIds.value = new Set()
   loadingRequirements.value = true
   requirementsError.value = ''
+  targetError.value = ''
   currentPage.value = page
   try {
     const result = await listCompanyInternRequirements(Number(selectedInternId.value), { page })
     requirements.value = result?.items ?? []
     pagination.value = result?.meta ?? null
+    targetRequirement.value = null
+    if (route.query.requirement_id) {
+      if (Number(route.query.intern_id) !== Number(selectedInternId.value)) {
+        targetError.value = 'This notification link does not match the selected intern.'
+      } else {
+        const requirementId = Number(route.query.requirement_id)
+        try {
+          targetRequirement.value = requirements.value.find((requirement) => requirement.id === requirementId)
+            ?? await getCompanyInternRequirement(Number(selectedInternId.value), requirementId)
+          const hash = `#company-requirement-${requirementId}`
+          if (route.hash !== hash) await router.replace({ query: { ...route.query }, hash })
+        } catch (error) {
+          targetError.value = apiErrorMessage(error, 'Unable to open this notification. The requirement may no longer be available.')
+        }
+      }
+    }
     return true
   } catch (error) {
     requirementsError.value = apiErrorMessage(error, 'Unable to load this intern’s requirements.')
@@ -64,9 +101,15 @@ const loadInterns = async () => {
   internsError.value = ''
   try {
     interns.value = await listCompanyInterns()
-    selectedInternId.value = interns.value.length ? String(interns.value[0].id) : ''
+    const requestedInternId = Number(route.query.intern_id)
+    const requestedIntern = interns.value.find((intern) => intern.id === requestedInternId)
+    selectedInternId.value = route.query.intern_id
+      ? requestedIntern ? String(requestedIntern.id) : ''
+      : interns.value.length ? String(interns.value[0].id) : ''
     requirements.value = []
     pagination.value = null
+    targetRequirement.value = null
+    targetError.value = route.query.intern_id && !requestedIntern ? 'This notification link is no longer available.' : ''
     if (selectedInternId.value) await loadRequirements(1)
   } catch (error) {
     internsError.value = apiErrorMessage(error, 'Unable to load intern accounts. Please try again.')
@@ -78,8 +121,18 @@ const loadInterns = async () => {
 const selectIntern = async (event) => {
   selectedInternId.value = event.target.value
   requirements.value = []
+  targetRequirement.value = null
+  targetError.value = ''
   pagination.value = null
   fieldErrors.value = {}
+  viewedProofIds.value = new Set()
+  if (route.query.intern_id || route.query.requirement_id) {
+    const query = { ...route.query }
+    delete query.intern_id
+    delete query.requirement_id
+    await router.replace({ query, hash: '' })
+    return
+  }
   await loadRequirements(1)
 }
 
@@ -101,6 +154,7 @@ const createRequirement = async () => {
       due_date: form.due_date || null,
       is_required: Boolean(form.is_required),
     })
+    assignmentModalOpen.value = false
     form.title = ''
     form.description = ''
     form.due_date = ''
@@ -172,6 +226,7 @@ const viewProof = async (requirement) => {
   try {
     const response = await downloadCompanyRequirementProof(Number(selectedInternId.value), requirement.id)
     proofPreview.value = { open: true, title: requirement.title, file: response.data }
+    viewedProofIds.value = new Set([...viewedProofIds.value, requirement.id])
   } catch (error) {
     showAlert('error', 'Proof not opened', apiErrorMessage(error, 'Unable to open this proof. Please try again.'))
   } finally {
@@ -193,6 +248,15 @@ const submissionTone = (status) => ({
   approved: 'bg-emerald-50 text-emerald-800',
 }[status] ?? 'bg-slate-100 text-slate-700')
 
+watch(() => [route.query.intern_id, route.query.requirement_id], ([internId, requirementId]) => {
+  if (internId || requirementId) {
+    loadInterns()
+  } else {
+    targetRequirement.value = null
+    targetError.value = ''
+    loadRequirements(1)
+  }
+})
 onMounted(loadInterns)
 </script>
 
@@ -216,48 +280,27 @@ onMounted(loadInterns)
           <option v-for="intern in interns" :key="intern.id" :value="String(intern.id)">{{ intern.name }} — {{ intern.email }}</option>
         </select>
       </div>
-
-      <form v-if="selectedIntern" data-testid="company-requirement-form" class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" @submit.prevent="createRequirement">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-950">Assign a requirement</h2>
-          <p class="mt-1 text-sm text-slate-600">Assignments cannot be edited or deleted after creation.</p>
-        </div>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="sm:col-span-2">
-            <label for="company-requirement-title" class="block text-sm font-semibold text-slate-800">Requirement title</label>
-            <input id="company-requirement-title" v-model="form.title" maxlength="255" required class="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" :aria-invalid="Boolean(firstError('title'))" :aria-describedby="firstError('title') ? 'company-requirement-title-error' : undefined" />
-            <p v-if="firstError('title')" id="company-requirement-title-error" data-testid="company-requirement-title-error" class="mt-1 text-sm text-red-700" role="alert">{{ firstError('title') }}</p>
-          </div>
-          <div class="sm:col-span-2">
-            <label for="company-requirement-description" class="block text-sm font-semibold text-slate-800">Description <span class="font-normal text-slate-500">(optional)</span></label>
-            <textarea id="company-requirement-description" v-model="form.description" rows="3" maxlength="5000" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
-          </div>
-          <div>
-            <label for="company-requirement-due-date" class="block text-sm font-semibold text-slate-800">Due date <span class="font-normal text-slate-500">(optional)</span></label>
-            <DatePickerField id="company-requirement-due-date" v-model="form.due_date" :min="selectedIntern.start_date" :max="selectedIntern.end_date" :invalid="Boolean(firstError('due_date'))" :describedby="firstError('due_date') ? 'company-requirement-due-date-error' : undefined" />
-            <p v-if="firstError('due_date')" id="company-requirement-due-date-error" class="mt-1 text-sm text-red-700" role="alert">{{ firstError('due_date') }}</p>
-          </div>
-          <label class="flex min-h-11 items-center gap-3 text-sm font-medium text-slate-800">
-            <input v-model="form.is_required" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-900" />
-            Required for internship completion
-          </label>
-        </div>
-        <button type="submit" class="app-button app-button--primary" :disabled="creating">{{ creating ? 'Assigning...' : 'Assign requirement' }}</button>
-      </form>
+      <div v-if="targetError" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert" data-testid="company-requirement-target-error">
+        <p>{{ targetError }}</p>
+        <a class="mt-2 inline-block font-semibold underline" href="/company/requirements">Back to requirements</a>
+      </div>
 
       <section v-if="selectedIntern" class="space-y-4" aria-labelledby="company-requirements-list-title">
-        <div>
-          <h2 id="company-requirements-list-title" class="text-xl font-semibold tracking-tight text-slate-950">{{ selectedIntern.name }}’s requirements</h2>
-          <p class="mt-1 text-sm text-slate-600">Requirement completion and proof review are shown separately.</p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="company-requirements-list-title" class="text-xl font-semibold tracking-tight text-slate-950">{{ selectedIntern.name }}’s requirements</h2>
+            <p class="mt-1 text-sm text-slate-600">Requirement completion and proof review are shown separately.</p>
+          </div>
+          <button type="button" class="app-button app-button--primary" data-testid="assign-requirement-open" @click="openAssignmentModal">Assign requirement</button>
         </div>
         <p v-if="loadingRequirements" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading requirements...</p>
         <div v-else-if="requirementsError" class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
           <p class="text-sm text-red-800">{{ requirementsError }}</p>
           <button type="button" class="app-button app-button--secondary mt-3" data-testid="retry-company-requirements" @click="loadRequirements(currentPage)">Try again</button>
         </div>
-        <p v-else-if="!requirements.length" class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">No requirements assigned yet.</p>
+        <p v-else-if="!visibleRequirements.length" class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">No requirements assigned yet.</p>
         <div v-else class="space-y-4">
-          <article v-for="requirement in requirements" :key="requirement.id" :data-testid="`company-requirement-${requirement.id}`" class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <article v-for="requirement in visibleRequirements" :id="`company-requirement-${requirement.id}`" :key="requirement.id" :data-testid="`company-requirement-${requirement.id}`" :data-notification-target="targetRequirement?.id === requirement.id ? 'true' : null" :class="['space-y-4 rounded-xl border bg-white p-5 shadow-sm sm:p-6', targetRequirement?.id === requirement.id ? 'border-amber-400 ring-2 ring-amber-100' : 'border-slate-200']">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 class="text-base font-semibold text-slate-950">{{ requirement.title }}</h3>
@@ -278,13 +321,14 @@ onMounted(loadInterns)
             </div>
 
             <div v-if="requirement.submission_status === 'pending_review'" class="space-y-3 border-t border-slate-200 pt-4">
+              <p v-if="!viewedProofIds.has(requirement.id)" :id="`requirement-approval-proof-required-${requirement.id}`" class="text-sm text-slate-600">View the proof before approving.</p>
               <div>
                 <label :for="`requirement-review-comment-${requirement.id}`" class="block text-sm font-semibold text-slate-800">Review comment <span class="font-normal text-slate-500">(optional for approval; required for changes)</span></label>
                 <textarea :id="`requirement-review-comment-${requirement.id}`" v-model="reviewComments[requirement.id]" rows="2" maxlength="5000" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" :aria-invalid="Boolean(reviewErrors[requirement.id])" :aria-describedby="reviewErrors[requirement.id] ? `requirement-review-comment-error-${requirement.id}` : undefined" />
                 <p v-if="reviewErrors[requirement.id]" :id="`requirement-review-comment-error-${requirement.id}`" :data-testid="`requirement-review-comment-error-${requirement.id}`" class="mt-1 text-sm text-red-700" role="alert">{{ reviewErrors[requirement.id] }}</p>
               </div>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="app-button app-button--primary" :disabled="Boolean(busyAction)" :data-testid="`approve-requirement-${requirement.id}`" @click="review(requirement, 'approve')">{{ busyAction === `${requirement.id}:approve` ? 'Approving...' : 'Approve' }}</button>
+                <button type="button" class="app-button app-button--primary" :disabled="Boolean(busyAction) || !viewedProofIds.has(requirement.id)" :aria-describedby="!viewedProofIds.has(requirement.id) ? `requirement-approval-proof-required-${requirement.id}` : undefined" :data-testid="`approve-requirement-${requirement.id}`" @click="review(requirement, 'approve')">{{ busyAction === `${requirement.id}:approve` ? 'Approving...' : 'Approve' }}</button>
                 <button type="button" class="app-button app-button--secondary" :disabled="Boolean(busyAction)" :data-testid="`request-changes-requirement-${requirement.id}`" @click="review(requirement, 'request-changes')">{{ busyAction === `${requirement.id}:request-changes` ? 'Saving...' : 'Request changes' }}</button>
               </div>
             </div>
@@ -293,5 +337,34 @@ onMounted(loadInterns)
         </div>
       </section>
     </template>
+
+    <AppModal :open="assignmentModalOpen" title="Assign a requirement" description="Assignments cannot be edited or deleted after creation." :busy="creating" @close="closeAssignmentModal">
+      <form id="company-requirement-form" data-testid="company-requirement-form" class="space-y-4" @submit.prevent="createRequirement">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="company-requirement-title" class="block text-sm font-semibold text-slate-800">Requirement title</label>
+            <input id="company-requirement-title" v-model="form.title" maxlength="255" required class="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" :aria-invalid="Boolean(firstError('title'))" :aria-describedby="firstError('title') ? 'company-requirement-title-error' : undefined" />
+            <p v-if="firstError('title')" id="company-requirement-title-error" data-testid="company-requirement-title-error" class="mt-1 text-sm text-red-700" role="alert">{{ firstError('title') }}</p>
+          </div>
+          <div class="sm:col-span-2">
+            <label for="company-requirement-description" class="block text-sm font-semibold text-slate-800">Description <span class="font-normal text-slate-500">(optional)</span></label>
+            <textarea id="company-requirement-description" v-model="form.description" rows="3" maxlength="5000" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+          </div>
+          <div>
+            <label for="company-requirement-due-date" class="block text-sm font-semibold text-slate-800">Due date <span class="font-normal text-slate-500">(optional)</span></label>
+            <DatePickerField id="company-requirement-due-date" v-model="form.due_date" :min="selectedIntern.start_date" :max="selectedIntern.end_date" :invalid="Boolean(firstError('due_date'))" :describedby="firstError('due_date') ? 'company-requirement-due-date-error' : undefined" />
+            <p v-if="firstError('due_date')" id="company-requirement-due-date-error" class="mt-1 text-sm text-red-700" role="alert">{{ firstError('due_date') }}</p>
+          </div>
+          <label class="flex min-h-11 items-center gap-3 text-sm font-medium text-slate-800">
+            <input v-model="form.is_required" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-900" />
+            Required for internship completion
+          </label>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="app-button app-button--secondary" :disabled="creating" @click="closeAssignmentModal">Cancel</button>
+        <button type="submit" form="company-requirement-form" class="app-button app-button--primary" :disabled="creating">{{ creating ? 'Assigning...' : 'Assign requirement' }}</button>
+      </template>
+    </AppModal>
   </main>
 </template>

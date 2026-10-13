@@ -7,7 +7,7 @@ import * as ojt from '../../services/ojt'
 vi.mock('../../services/ojt', () => ({
   getInternOverview: vi.fn(),
   getStudentOverview: vi.fn(),
-  exportStudentSummary: vi.fn(),
+  exportOjtSummary: vi.fn(),
 }))
 
 const pdfResponse = (headers = {
@@ -127,7 +127,7 @@ describe('student OverviewView', () => {
     expect(wrapper.get('[data-testid="overview-attention-item"]').text()).toContain('required OJT hours')
     expect(wrapper.get('[data-testid="overview-pace-unavailable"] a').attributes('href')).toBe('/intern/account')
     expect(wrapper.find('[data-testid="overview-progress-percentage"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="overview-export"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="overview-export"]').exists()).toBe(true)
   })
 
   it('keeps long completion blocker lists compact and links to the full list', async () => {
@@ -245,7 +245,7 @@ describe('student OverviewView', () => {
   it('downloads one PDF and revokes its temporary object URL', async () => {
     const response = pdfResponse()
     const download = stubDownload()
-    ojt.exportStudentSummary.mockResolvedValue(response)
+    ojt.exportOjtSummary.mockResolvedValue(response)
     const wrapper = mount(OverviewView, { global })
     await flushPromises()
     const timeoutSpy = vi.spyOn(globalThis, 'setTimeout')
@@ -253,7 +253,7 @@ describe('student OverviewView', () => {
     await wrapper.get('[data-testid="overview-export"]').trigger('click')
     await flushPromises()
 
-    expect(ojt.exportStudentSummary).toHaveBeenCalledTimes(1)
+    expect(ojt.exportOjtSummary).toHaveBeenCalledWith('student')
     expect(download.createObjectURL).toHaveBeenCalledWith(response.data)
     expect(download.clicks).toEqual([{
       href: 'blob:ojt-summary',
@@ -265,11 +265,26 @@ describe('student OverviewView', () => {
     expect(download.revokeObjectURL).toHaveBeenCalledWith('blob:ojt-summary')
   })
 
+  it('lets a company-managed intern export their own summary', async () => {
+    const response = pdfResponse()
+    const download = stubDownload()
+    ojt.getInternOverview.mockResolvedValue(overview())
+    ojt.exportOjtSummary.mockResolvedValue(response)
+    const wrapper = mount(OverviewView, { props: { accountRole: 'intern' }, global })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="overview-export"]').trigger('click')
+    await flushPromises()
+
+    expect(ojt.exportOjtSummary).toHaveBeenCalledWith('intern')
+    expect(download.clicks).toHaveLength(1)
+  })
+
   it('disables repeated clicks while the PDF request is pending', async () => {
     let resolveExport
     const response = pdfResponse()
     const download = stubDownload()
-    ojt.exportStudentSummary.mockReturnValue(new Promise((resolve) => { resolveExport = resolve }))
+    ojt.exportOjtSummary.mockReturnValue(new Promise((resolve) => { resolveExport = resolve }))
     const wrapper = mount(OverviewView, { global })
     await flushPromises()
     const button = wrapper.get('[data-testid="overview-export"]')
@@ -278,7 +293,7 @@ describe('student OverviewView', () => {
     button.element.click()
     await nextTick()
 
-    expect(ojt.exportStudentSummary).toHaveBeenCalledTimes(1)
+    expect(ojt.exportOjtSummary).toHaveBeenCalledTimes(1)
     expect(button.text()).toBe('Generating…')
     expect(button.attributes('disabled')).toBeDefined()
 
@@ -291,7 +306,7 @@ describe('student OverviewView', () => {
 
   it('shows a generic retry error and succeeds on the next attempt', async () => {
     const download = stubDownload()
-    ojt.exportStudentSummary
+    ojt.exportOjtSummary
       .mockRejectedValueOnce(new Error('database password leaked'))
       .mockResolvedValueOnce(pdfResponse())
     const wrapper = mount(OverviewView, { global })
@@ -310,7 +325,7 @@ describe('student OverviewView', () => {
     await button.trigger('click')
     await flushPromises()
 
-    expect(ojt.exportStudentSummary).toHaveBeenCalledTimes(2)
+    expect(ojt.exportOjtSummary).toHaveBeenCalledTimes(2)
     expect(download.clicks).toHaveLength(1)
     expect(wrapper.find('[data-testid="overview-export-error"]').exists()).toBe(false)
   })
@@ -319,7 +334,7 @@ describe('student OverviewView', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-23T18:30:00.000Z'))
     const download = stubDownload()
-    ojt.exportStudentSummary.mockResolvedValue(pdfResponse({ 'content-type': 'application/pdf' }))
+    ojt.exportOjtSummary.mockResolvedValue(pdfResponse({ 'content-type': 'application/pdf' }))
     const wrapper = mount(OverviewView, { global })
     await flushPromises()
 

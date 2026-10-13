@@ -108,9 +108,10 @@ The assistant uses inclusive configured workdays, does not apply holidays,
 and never claims official school/company completion. A pace-unavailable state
 must not be presented as At risk merely because pace inputs are missing.
 
-The loaded Overview offers one `Export Summary` action for a print-friendly,
-white A4 snapshot of the student's current tracked progress. It is for personal
-monitoring and clearly disclaims official attendance or completion verification.
+The loaded personal-student and company-managed-intern Overviews offer one
+`Export Summary` action for a print-friendly, white A4 snapshot of the signed-in
+user's current tracked progress. It is for personal monitoring and clearly
+disclaims official attendance or completion verification.
 
 Public navigation may include Home, About, and Sign in/Register. The product brand is a visual identity element; it must not unexpectedly redirect an authenticated student away from the current workflow.
 
@@ -148,10 +149,11 @@ Do not create contradictory date bounds where minimum is after maximum.
 ### Company Attendance and intern Work Hours
 
 The company account holder records one attendance session per intern per
-workday. Time in uses the server's Manila-local date and time. At time out, the
-account holder enters total break minutes. The backend validates the session
-and calculates rendered duration. The account holder can correct an open or
-completed entry's date, times, and break; no delete action is available.
+workday. Time in uses the server's Manila-local date and time. Time out keeps
+the session's saved break value, which defaults to zero; the account holder can
+correct the date, times, and break through Edit work hours. The backend
+validates the session and calculates rendered duration. No delete action is
+available.
 
 Company-managed interns see their backend-calculated completed hours and
 paginated work sessions in a read-only Work Hours page. An open session is
@@ -247,8 +249,16 @@ workflow separate from personal requirement editing, notes, and reopen actions.
 
 Proof files stay on Laravel's private local disk and are downloaded only
 through authenticated, ownership-scoped routes. Submission history, assignment
-editing/deletion, notifications, and public proof links are outside this
-slice.
+editing/deletion and public proof links are outside this slice.
+
+Company account holders and company-managed interns use an in-app notification
+bell for assignment, proof-submission, review, due-today, and overdue events.
+Personal students use the same bell for a missed scheduled workday without a
+work log and due-today/overdue task and requirement reminders. Selecting a
+notification opens the relevant authorized page; company pages select the
+matching intern. A personal item created with today's due date is notified
+immediately. Mark all as read preserves history. Keep notification loading and
+read failures recoverable. Personal tracking workflows remain unchanged.
 
 ## Feedback and state coverage
 
@@ -281,8 +291,8 @@ Avoid permanent green inline banners for routine actions when a short success al
 - decorative charts or arbitrary combined progress scores;
 - gradients, glassmorphism, excessive rounded cards, and large marketing footers;
 - extra company roles or staff, administrator approval, company verification,
-  invitations, submission history, public proof links, or notification UI;
-- notification, analytics, or AI UI;
+  invitations, submission history, or public proof links;
+- email, push, real-time notification delivery, analytics, or AI UI;
 - client-side progress calculations, arbitrary combined scores, or claims of
   official completion;
 

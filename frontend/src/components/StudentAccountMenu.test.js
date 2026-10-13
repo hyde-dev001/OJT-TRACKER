@@ -77,4 +77,16 @@ describe('StudentAccountMenu', () => {
     expect(wrapper.find('a[href="/student/profile"]').exists()).toBe(false)
     wrapper.unmount()
   })
+
+  it('shows the company name in the company account holder menu', async () => {
+    const wrapper = mount(StudentAccountMenu, {
+      props: { user: { ...user, role: 'company', company_name: 'Northwind Studio' } },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+
+    await wrapper.get('[data-testid="account-trigger"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="account-menu"]').text()).toContain('Northwind Studio')
+    wrapper.unmount()
+  })
 })

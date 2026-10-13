@@ -25,6 +25,7 @@ class InternshipResource extends JsonResource
                 : round($this->expected_daily_minutes / 60, 2),
             'status' => $this->status,
             'progress' => $this->progressSummary(),
+            ...($this->company_id === null ? [] : ['company_name' => $this->company?->name]),
         ];
     }
 }

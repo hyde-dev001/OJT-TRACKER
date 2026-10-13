@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\SubmitInternRequirementProofRequest;
 use App\Http\Resources\RequirementResource;
 use App\Models\Internship;
+use App\Models\Requirement;
+use App\Services\CompanyInternNotifications;
 use App\Services\WorkItemProofs;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -27,17 +29,25 @@ class RequirementController extends Controller
         );
     }
 
+    public function show(Request $request, int $requirement): RequirementResource
+    {
+        return new RequirementResource($this->internship($request)->requirements()->whereKey($requirement)->firstOrFail());
+    }
+
     public function submit(
         SubmitInternRequirementProofRequest $request,
         WorkItemProofs $proofs,
+        CompanyInternNotifications $notifications,
         int $requirement,
     ): RequirementResource {
         $internship = $this->internship($request);
+        $companyHolder = $internship->company()->firstOrFail()->accountHolder()->firstOrFail();
         $item = $proofs->replace(
             $internship->requirements(),
             $requirement,
             $request->file('proof'),
             $request->validated('comment'),
+            fn (Requirement $savedRequirement) => $notifications->proofSubmitted($savedRequirement, $companyHolder),
         );
 
         return new RequirementResource($item);

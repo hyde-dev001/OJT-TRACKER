@@ -141,6 +141,7 @@ onMounted(() => {
           <h2 id="placement-title" class="text-xl font-semibold tracking-tight text-slate-950">Company placement schedule</h2>
           <p class="mt-1 text-sm text-slate-600">These placement details are managed by your company.</p>
           <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+            <div v-if="internship.company_name"><dt class="font-medium text-slate-500">Company</dt><dd class="mt-1 text-slate-900">{{ internship.company_name }}</dd></div>
             <div><dt class="font-medium text-slate-500">OJT start date</dt><dd class="mt-1 text-slate-900">{{ internship.start_date }}</dd></div>
             <div><dt class="font-medium text-slate-500">Target end date</dt><dd class="mt-1 text-slate-900">{{ internship.end_date }}</dd></div>
             <div><dt class="font-medium text-slate-500">Work days</dt><dd class="mt-1 text-slate-900">{{ workDayLabels }}</dd></div>

@@ -15,7 +15,7 @@
 - Reuse the existing `work_logs` table and `WorkLog` model.
 - One session is allowed per intern per workday.
 - Starting a session records the server's current date and time in the configured application timezone (`Asia/Manila` by default).
-- Ending a session records the server's current time. The account holder enters the total break minutes at time-out.
+- Ending a session records the server's current time and keeps the session's saved break minutes, which default to zero. The account holder can adjust break minutes through Edit work hours.
 - The backend validates time ordering and break duration and calculates rendered minutes. Client-supplied rendered minutes or status are ignored.
 - Only completed sessions contribute to progress. The current `Internship::progressSummary()` already sums completed work logs and returns a null percentage when required minutes are unset.
 - The company account holder can edit an intern's saved work-hour entries, including completed sessions, by correcting the work date, time-in, time-out, and break minutes.
@@ -203,7 +203,7 @@ $this->internRequest($intern)
 - `listCompanyInternWorkLogs(internId, options)` calls the company work-log GET endpoint and returns `{ items, meta, links }` via `unwrapPage()`.
 - `startCompanyWorkLog(internId)` posts to the time-in endpoint; `endCompanyWorkLog(internId, payload)` posts `{ break_minutes }`; `updateCompanyWorkLog(internId, workLogId, payload)` sends work date/time/break corrections.
 - `/company/attendance` requires authentication and the `company` role. The page loads the existing intern list, lets the account holder select one intern, and shows that intern's sessions.
-- The page offers Time in when no session is open today, Time out with break minutes for today's open session, and Edit for open or completed entries. It has no delete action.
+- The page offers Time in when no session is open today, Time out for today's open session, and Edit work hours for open or completed entries. Time out keeps the saved break value, defaulting to zero; the holder can adjust it in the edit form. It has no delete action.
 
 - [ ] **Step 1: Add failing service tests for list/start/end/update calls and page tests for intern selection, loading/error/empty states, live actions, and editing a completed entry.** Verify edit submissions send times and break minutes but never send rendered minutes/status.
 
@@ -274,7 +274,7 @@ expect(wrapper.text()).toContain('Progress percentage is unavailable until requi
 - Modify: `README.md`
 - Reference: `docs/superpowers/specs/2026-10-13-company-attendance-design.md`
 
-- [ ] **Step 1: Update product documentation.** State that a company account holder records one daily session, enters breaks at time-out, and can edit open or completed work-hour entries; backend duration is recomputed. State that interns can view their hours without attendance controls, the personal student workflow is unchanged, and records are not official attendance certification. Keep task/proof/review flows out of this slice.
+- [ ] **Step 1: Update product documentation.** State that a company account holder records one daily session, can edit break minutes in the work-hour form, and can edit open or completed work-hour entries; backend duration is recomputed. State that interns can view their hours without attendance controls, the personal student workflow is unchanged, and records are not official attendance certification. Keep task/proof/review flows out of this slice.
 
 - [ ] **Step 2: Run the complete backend and frontend suites.**
 

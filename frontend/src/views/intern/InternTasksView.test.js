@@ -1,10 +1,19 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import InternTasksView from './InternTasksView.vue'
-import { downloadInternTaskProof, listInternTasks, submitInternTaskProof } from '../../services/ojt'
+import { downloadInternTaskProof, getInternTask, listInternTasks, submitInternTaskProof } from '../../services/ojt'
+
+const route = vi.hoisted(() => ({ query: {}, hash: '' }))
+const routerReplace = vi.hoisted(() => vi.fn())
+
+vi.mock('vue-router', () => ({
+  useRoute: () => route,
+  useRouter: () => ({ replace: routerReplace }),
+}))
 
 vi.mock('../../services/ojt', () => ({
   downloadInternTaskProof: vi.fn(),
+  getInternTask: vi.fn(),
   listInternTasks: vi.fn(),
   submitInternTaskProof: vi.fn(),
 }))
@@ -47,7 +56,11 @@ const mountView = () => mount(InternTasksView, {
 })
 
 describe('InternTasksView', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    route.query = {}
+    route.hash = ''
+  })
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows assigned task details, separate submission state, and requested changes', async () => {
@@ -62,6 +75,34 @@ describe('InternTasksView', () => {
     expect(wrapper.get('[data-testid="submit-task-proof-4"]').text()).toContain('Resubmit proof')
     expect(wrapper.find('[data-testid="edit-task-4"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="delete-task-4"]').exists()).toBe(false)
+  })
+
+  it('shows and highlights an exact off-page task from a notification', async () => {
+    const target = { ...task, id: 99, title: 'Exact submitted task', proof_available: true }
+    route.query = { task_id: '99' }
+    listInternTasks.mockResolvedValueOnce(page([task]))
+    getInternTask.mockResolvedValueOnce(target)
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(getInternTask).toHaveBeenCalledWith(99)
+    expect(wrapper.get('[data-testid="intern-task-99"]').text()).toContain('Exact submitted task')
+    expect(wrapper.get('[data-testid="intern-task-99"]').attributes('data-notification-target')).toBe('true')
+    expect(wrapper.get('[data-testid="view-task-proof-99"]').exists()).toBe(true)
+    expect(routerReplace).toHaveBeenCalledWith({ query: route.query, hash: '#intern-task-99' })
+    wrapper.unmount()
+  })
+
+  it('shows a recoverable message when a notification task is unavailable', async () => {
+    route.query = { task_id: '404' }
+    listInternTasks.mockResolvedValueOnce(page())
+    getInternTask.mockRejectedValueOnce(new Error('missing'))
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="intern-task-target-error"]').text()).toContain('Unable to reach the API')
+    expect(wrapper.get('[data-testid="intern-task-target-error"] a').attributes('href')).toBe('/intern/tasks')
+    wrapper.unmount()
   })
 
   it('submits a single image or PDF with an optional comment', async () => {

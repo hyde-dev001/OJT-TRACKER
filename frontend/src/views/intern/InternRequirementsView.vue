@@ -1,15 +1,20 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ActionAlert from '../../components/ActionAlert.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PaginationControls from '../../components/PaginationControls.vue'
 import ProofPreviewModal from '../../components/ProofPreviewModal.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { apiErrorMessage } from '../../services/api'
-import { downloadInternRequirementProof, listInternRequirements, submitInternRequirementProof } from '../../services/ojt'
+import { downloadInternRequirementProof, getInternRequirement, listInternRequirements, submitInternRequirementProof } from '../../services/ojt'
 import { formatDate } from '../../utils/formatters'
 
 const requirements = ref([])
+const route = useRoute()
+const router = useRouter()
+const targetRequirement = ref(null)
+const targetError = ref('')
 const pagination = ref(null)
 const currentPage = ref(1)
 const loading = ref(true)
@@ -23,16 +28,36 @@ const proofFiles = reactive({})
 const comments = reactive({})
 const proofErrors = reactive({})
 const showAlert = (variant, title, message) => { actionAlert.value = { open: true, variant, title, message } }
+const visibleRequirements = computed(() => targetRequirement.value && !requirements.value.some((requirement) => requirement.id === targetRequirement.value.id)
+  ? [targetRequirement.value, ...requirements.value]
+  : requirements.value)
 
 async function load(page = currentPage.value) {
   loading.value = true
   error.value = ''
+  targetError.value = ''
   currentPage.value = page
 
   try {
     const result = await listInternRequirements({ page })
     requirements.value = result?.items ?? []
     pagination.value = result?.meta ?? null
+    targetRequirement.value = null
+    if (route.query.requirement_id) {
+      const requirementId = Number(route.query.requirement_id)
+      if (!Number.isInteger(requirementId) || requirementId < 1) {
+        targetError.value = 'This notification link is invalid.'
+      } else {
+        try {
+          targetRequirement.value = requirements.value.find((requirement) => requirement.id === requirementId)
+            ?? await getInternRequirement(requirementId)
+          const hash = `#intern-requirement-${requirementId}`
+          if (route.hash !== hash) await router.replace({ query: { ...route.query }, hash })
+        } catch (requestError) {
+          targetError.value = apiErrorMessage(requestError, 'Unable to open this notification. The requirement may no longer be available.')
+        }
+      }
+    }
   } catch (requestError) {
     error.value = apiErrorMessage(requestError, 'Unable to load your assigned requirements.')
   } finally {
@@ -128,6 +153,7 @@ const submissionLabel = (status) => ({
   approved: 'Approved',
 }[status] ?? 'Unknown')
 
+watch(() => route.query.requirement_id, () => load(1))
 onMounted(() => load(1))
 </script>
 
@@ -137,14 +163,18 @@ onMounted(() => load(1))
 
     <ActionAlert :open="actionAlert.open" :variant="actionAlert.variant" :title="actionAlert.title" :message="actionAlert.message" @close="actionAlert.open = false" />
     <ProofPreviewModal :open="proofPreview.open" :title="proofPreview.title" :file="proofPreview.file" @close="proofPreview = { open: false, title: '', file: null }" />
+    <div v-if="targetError" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert" data-testid="intern-requirement-target-error">
+      <p>{{ targetError }}</p>
+      <a class="mt-2 inline-block font-semibold underline" href="/intern/requirements">Back to requirements</a>
+    </div>
     <p v-if="loading" class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading requirements...</p>
     <div v-else-if="error" class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
       <p class="text-sm text-red-800">{{ error }}</p>
       <button type="button" class="app-button app-button--secondary mt-3" data-testid="retry-intern-requirements" @click="load(currentPage)">Try again</button>
     </div>
-    <p v-else-if="!requirements.length" class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">No assigned requirements yet.</p>
+    <p v-else-if="!visibleRequirements.length" class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">No assigned requirements yet.</p>
     <section v-else class="space-y-4" aria-label="Assigned requirements">
-      <article v-for="requirement in requirements" :key="requirement.id" :data-testid="`intern-requirement-${requirement.id}`" class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <article v-for="requirement in visibleRequirements" :id="`intern-requirement-${requirement.id}`" :key="requirement.id" :data-testid="`intern-requirement-${requirement.id}`" :data-notification-target="targetRequirement?.id === requirement.id ? 'true' : null" :class="['space-y-4 rounded-xl border bg-white p-5 shadow-sm sm:p-6', targetRequirement?.id === requirement.id ? 'border-amber-400 ring-2 ring-amber-100' : 'border-slate-200']">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 class="text-base font-semibold text-slate-950">{{ requirement.title }}</h2>

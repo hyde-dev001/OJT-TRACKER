@@ -6,7 +6,11 @@ import {
   createCompanyInternTask,
   approveCompanyRequirement,
   approveCompanyTask,
-  exportStudentSummary,
+  exportOjtSummary,
+  getCompanyInternTask,
+  getCompanyInternRequirement,
+  getInternTask,
+  getInternRequirement,
   getInternInternship,
   getStudentOverview,
   downloadCompanyRequirementProof,
@@ -23,6 +27,9 @@ import {
   listStudentRequirements,
   listStudentTasks,
   listStudentWorkLogs,
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
   resetCompanyInternPassword,
   requestCompanyRequirementChanges,
   requestCompanyTaskChanges,
@@ -40,6 +47,7 @@ vi.mock('./api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+      patch: vi.fn(),
   },
 }))
 
@@ -72,16 +80,23 @@ describe('student OJT service', () => {
     expect(api.get).toHaveBeenCalledWith('/student/overview')
   })
 
-  it('requests the summary as a PDF blob with a Render-friendly timeout', async () => {
+  it('requests the authenticated account summary as a PDF blob', async () => {
     const response = {
       data: new Blob(['%PDF']),
       headers: { 'content-disposition': 'attachment; filename="OJT-Progress-Summary-2026-09-24.pdf"' },
     }
     api.get.mockResolvedValue(response)
 
-    await expect(exportStudentSummary()).resolves.toBe(response)
+    await expect(exportOjtSummary('student')).resolves.toBe(response)
 
     expect(api.get).toHaveBeenCalledWith('/student/overview/export', {
+      responseType: 'blob',
+      timeout: 90000,
+    })
+
+    await exportOjtSummary('intern')
+
+    expect(api.get).toHaveBeenLastCalledWith('/intern/overview/export', {
       responseType: 'blob',
       timeout: 90000,
     })
@@ -181,6 +196,34 @@ describe('student OJT service', () => {
     })
   })
 
+  it('uses authenticated notification endpoints for list and read actions', async () => {
+    const payload = {
+      data: [{ id: 'notification-1', event: 'assignment_created', title: 'New task assigned' }],
+      links: { next: '/api/notifications?page=2' },
+      meta: { current_page: 1, last_page: 2, per_page: 10, total: 11 },
+      unread_count: 3,
+    }
+    api.get.mockResolvedValue({ data: payload })
+    api.patch.mockResolvedValue({ data: { data: { id: 'notification-1', read_at: '2026-10-13T01:00:00Z' } } })
+    api.post.mockResolvedValue({ status: 204, data: {} })
+
+    await expect(listNotifications({ page: 1 })).resolves.toEqual({
+      items: payload.data,
+      links: payload.links,
+      meta: payload.meta,
+      unread_count: 3,
+    })
+    await expect(markNotificationRead('notification-1')).resolves.toEqual({
+      id: 'notification-1',
+      read_at: '2026-10-13T01:00:00Z',
+    })
+    await expect(markAllNotificationsRead()).resolves.toBeUndefined()
+
+    expect(api.get).toHaveBeenCalledWith('/notifications', { params: { page: 1 } })
+    expect(api.patch).toHaveBeenCalledWith('/notifications/notification-1/read')
+    expect(api.post).toHaveBeenCalledWith('/notifications/read-all')
+  })
+
   it('uses the intern endpoints and sends only the required-hours target', async () => {
     api.get.mockResolvedValue({ data: { data: { required_hours: null } } })
     api.put.mockResolvedValue({ data: { data: { required_hours: 500 } } })
@@ -225,6 +268,9 @@ describe('student OJT service', () => {
       links: page.links,
       meta: page.meta,
     })
+    api.get.mockResolvedValue({ data: { data: item } })
+    await expect(getCompanyInternTask(4, 8)).resolves.toEqual(item)
+    await expect(getCompanyInternRequirement(4, 8)).resolves.toEqual(item)
     await expect(createCompanyInternTask(4, { title: 'Prepare report' })).resolves.toEqual(item)
     await expect(createCompanyInternRequirement(4, { title: 'Submit form' })).resolves.toEqual(item)
     await approveCompanyTask(4, 8)
@@ -237,6 +283,8 @@ describe('student OJT service', () => {
 
     expect(api.get).toHaveBeenCalledWith('/company/interns/4/tasks', { params: { page: 2 } })
     expect(api.get).toHaveBeenCalledWith('/company/interns/4/requirements', { params: { page: 1 } })
+    expect(api.get).toHaveBeenCalledWith('/company/interns/4/tasks/8')
+    expect(api.get).toHaveBeenCalledWith('/company/interns/4/requirements/8')
     expect(api.post).toHaveBeenCalledWith('/company/interns/4/tasks', { title: 'Prepare report' })
     expect(api.post).toHaveBeenCalledWith('/company/interns/4/requirements', { title: 'Submit form' })
     expect(api.post).toHaveBeenCalledWith('/company/interns/4/tasks/8/approve', {})
@@ -258,6 +306,9 @@ describe('student OJT service', () => {
 
     await expect(listInternTasks()).resolves.toEqual({ items: page.data, links: page.links, meta: page.meta })
     await expect(listInternRequirements()).resolves.toEqual({ items: page.data, links: page.links, meta: page.meta })
+    api.get.mockResolvedValue({ data: { data: item } })
+    await expect(getInternTask(8)).resolves.toEqual(item)
+    await expect(getInternRequirement(8)).resolves.toEqual(item)
     await expect(submitInternTaskProof(8, formData)).resolves.toEqual(item)
     await expect(submitInternRequirementProof(8, formData)).resolves.toEqual(item)
     api.get.mockResolvedValue(proof)
@@ -266,6 +317,8 @@ describe('student OJT service', () => {
 
     expect(api.get).toHaveBeenCalledWith('/intern/tasks', { params: { page: 1 } })
     expect(api.get).toHaveBeenCalledWith('/intern/requirements', { params: { page: 1 } })
+    expect(api.get).toHaveBeenCalledWith('/intern/tasks/8')
+    expect(api.get).toHaveBeenCalledWith('/intern/requirements/8')
     expect(api.post).toHaveBeenCalledWith('/intern/tasks/8/submission', formData)
     expect(api.post).toHaveBeenCalledWith('/intern/requirements/8/submission', formData)
     expect(api.get).toHaveBeenCalledWith('/intern/tasks/8/proof', { responseType: 'blob' })

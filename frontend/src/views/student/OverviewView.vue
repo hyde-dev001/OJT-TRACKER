@@ -5,7 +5,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import ProgressBar from '../../components/ProgressBar.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
-import { exportStudentSummary, getInternOverview, getStudentOverview } from '../../services/ojt'
+import { exportOjtSummary, getInternOverview, getStudentOverview } from '../../services/ojt'
 import { formatDate, formatDuration } from '../../utils/formatters'
 
 const props = defineProps({ accountRole: { type: String, default: 'student' } })
@@ -52,7 +52,7 @@ const downloadSummary = async () => {
   exportError.value = ''
 
   try {
-    const response = await exportStudentSummary()
+    const response = await exportOjtSummary(props.accountRole)
     if (!response.headers['content-type']?.includes('application/pdf')) {
       throw new Error('Unexpected export response')
     }
@@ -147,7 +147,7 @@ onMounted(load)
 <template>
   <main data-testid="student-overview" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <PageHeader title="Overview" description="See your current OJT status, priorities, and completion readiness.">
-      <template v-if="props.accountRole === 'student' && overview && !loading && !error" #action>
+      <template v-if="['student', 'intern'].includes(props.accountRole) && overview && !loading && !error" #action>
         <div class="flex flex-col items-start gap-2">
           <button
             type="button"

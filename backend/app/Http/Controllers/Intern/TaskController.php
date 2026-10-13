@@ -7,6 +7,7 @@ use App\Http\Requests\SubmitInternTaskProofRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Internship;
 use App\Models\Task;
+use App\Services\CompanyInternNotifications;
 use App\Services\WorkItemProofs;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -28,17 +29,25 @@ class TaskController extends Controller
         );
     }
 
+    public function show(Request $request, int $task): TaskResource
+    {
+        return new TaskResource($this->internship($request)->tasks()->whereKey($task)->firstOrFail());
+    }
+
     public function submit(
         SubmitInternTaskProofRequest $request,
         WorkItemProofs $proofs,
+        CompanyInternNotifications $notifications,
         int $task,
     ): TaskResource {
         $internship = $this->internship($request);
+        $companyHolder = $internship->company()->firstOrFail()->accountHolder()->firstOrFail();
         $item = $proofs->replace(
             $internship->tasks(),
             $task,
             $request->file('proof'),
             $request->validated('comment'),
+            fn (Task $savedTask) => $notifications->proofSubmitted($savedTask, $companyHolder),
         );
 
         return new TaskResource($item);

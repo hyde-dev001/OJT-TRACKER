@@ -22,6 +22,7 @@ class CompanyInternManagementTest extends TestCase
 
         $this->companyRequest($company)->postJson('/api/company/interns', [
             ...$this->internPayload([
+                'suffix' => 'Jr.',
                 'start_date' => '2026-11-01',
                 'expected_hours_per_day' => 8,
             ]),
@@ -29,7 +30,8 @@ class CompanyInternManagementTest extends TestCase
             'role' => 'company',
         ])
             ->assertCreated()
-            ->assertJsonPath('data.name', 'Taylor Lee')
+            ->assertJsonPath('data.name', 'Taylor Lee Jr.')
+            ->assertJsonPath('data.suffix', 'Jr.')
             ->assertJsonPath('data.email', 'taylor.lee@example.com')
             ->assertJsonPath('data.setup_complete', false)
             ->assertJsonMissingPath('data.password');
@@ -37,6 +39,8 @@ class CompanyInternManagementTest extends TestCase
         $intern = User::where('email', 'taylor.lee@example.com')->firstOrFail();
 
         $this->assertSame('intern', $intern->role);
+        $this->assertSame('Jr.', $intern->suffix);
+        $this->assertSame(20, $intern->age);
         $this->assertTrue($intern->must_change_password);
         $this->assertTrue(Hash::check('TemporaryPass1!', $intern->password));
         $internship = $intern->currentInternship()->firstOrFail();
@@ -196,6 +200,7 @@ class CompanyInternManagementTest extends TestCase
             ['end_date' => '2026-10-31', 'field' => 'end_date'],
             ['work_days' => [8], 'field' => 'work_days.0'],
             ['expected_hours_per_day' => 24.5, 'field' => 'expected_hours_per_day'],
+            ['suffix' => 'PhD', 'field' => 'suffix'],
             ['password' => 'weak', 'password_confirmation' => 'weak', 'field' => 'password'],
         ] as $index => $invalidInput) {
             $field = $invalidInput['field'];
@@ -211,12 +216,35 @@ class CompanyInternManagementTest extends TestCase
         }
     }
 
+    public function test_company_intern_age_is_required_and_must_be_a_whole_number_from_1_to_120(): void
+    {
+        $company = Company::factory()->create();
+        $missingAge = $this->internPayload(['email' => 'missing-age@example.com']);
+        unset($missingAge['age']);
+
+        $this->companyRequest($company)
+            ->postJson('/api/company/interns', $missingAge)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('age');
+
+        foreach ([0, 121, 18.5] as $index => $age) {
+            $this->companyRequest($company)
+                ->postJson('/api/company/interns', $this->internPayload([
+                    'email' => "invalid-age-{$index}@example.com",
+                    'age' => $age,
+                ]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('age');
+        }
+    }
+
     /** @return array<string, mixed> */
     private function internPayload(array $overrides = []): array
     {
         return array_merge([
             'first_name' => 'Taylor',
             'last_name' => 'Lee',
+            'age' => 20,
             'email' => 'taylor.lee@example.com',
             'password' => 'TemporaryPass1!',
             'password_confirmation' => 'TemporaryPass1!',

@@ -37,10 +37,13 @@ class InternController extends Controller
 
         $internship = DB::transaction(function () use ($company, $data): Internship {
             $intern = new User();
+            $suffix = $data['suffix'] ?? null;
             $intern->fill([
-                'name' => trim($data['first_name'].' '.$data['last_name']),
+                'name' => trim($data['first_name'].' '.$data['last_name'].' '.($suffix ?? '')),
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'],
+                'suffix' => $suffix,
+                'age' => (int) $data['age'],
                 'email' => $data['email'],
                 'password' => $data['password'],
                 'email_verified_at' => now(),
@@ -119,6 +122,7 @@ class InternController extends Controller
             'name' => $intern->name,
             'first_name' => $intern->first_name,
             'last_name' => $intern->last_name,
+            'suffix' => $intern->suffix,
             'email' => $intern->email,
             'setup_complete' => ! $intern->must_change_password && $internship->required_minutes !== null,
             'start_date' => $internship->start_date?->toDateString(),

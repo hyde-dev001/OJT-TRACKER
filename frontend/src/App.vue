@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import MobileNavigationDrawer from './components/MobileNavigationDrawer.vue'
+import NotificationBell from './components/NotificationBell.vue'
 import StudentAccountMenu from './components/StudentAccountMenu.vue'
 import { useAuthStore } from './stores/auth'
 import { useAppStore } from './stores/app'
@@ -86,6 +87,7 @@ const themeLabel = computed(() => theme.value === 'dark' ? 'Switch to light mode
               <RouterLink to="/student/requirements" active-class="app-nav-link--active" class="app-nav-link">Requirements</RouterLink>
             </template>
           </div>
+          <NotificationBell v-if="['company', 'intern', 'student'].includes(authStore.user?.role)" />
           <button type="button" class="theme-toggle" data-testid="theme-toggle" :aria-label="themeLabel" :title="themeLabel" @click="toggleTheme">
             <svg v-if="theme === 'dark'" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z" /></svg>

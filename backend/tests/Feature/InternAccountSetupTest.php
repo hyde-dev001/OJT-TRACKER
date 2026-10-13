@@ -130,6 +130,24 @@ class InternAccountSetupTest extends TestCase
             ->assertJsonPath('data.progress.percentage', null);
     }
 
+    public function test_company_managed_internship_includes_its_company_name(): void
+    {
+        $company = Company::factory()->create(['name' => 'Northwind Studio']);
+        $intern = User::factory()->create([
+            'role' => 'intern',
+            'must_change_password' => false,
+        ]);
+        Internship::factory()->create([
+            'student_id' => $intern->id,
+            'company_id' => $company->id,
+        ]);
+
+        $this->internRequest($intern)
+            ->getJson('/api/intern/internship')
+            ->assertOk()
+            ->assertJsonPath('data.company_name', 'Northwind Studio');
+    }
+
     public function test_intern_can_set_and_update_only_required_hours(): void
     {
         [$intern, $internship] = $this->internshipContext(requiredMinutes: null);

@@ -8,8 +8,10 @@ use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Internship;
 use App\Models\Task;
+use App\Services\CompanyInternNotifications;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
@@ -38,7 +40,7 @@ class TaskController extends Controller
         );
     }
 
-    public function store(StoreTaskRequest $request): TaskResource
+    public function store(StoreTaskRequest $request, CompanyInternNotifications $notifications): TaskResource
     {
         $data = $request->validated();
         $requestedInternship = Internship::findOrFail($data['internship_id']);
@@ -48,7 +50,18 @@ class TaskController extends Controller
         $data['internship_id'] = $internship->id;
         $data['status'] = 'to_do';
 
-        return new TaskResource(Task::create($data));
+        $student = $request->user();
+        $task = DB::transaction(function () use ($data, $student, $notifications): Task {
+            $task = Task::create($data);
+
+            if ($task->due_date?->toDateString() === today('Asia/Manila')->toDateString()) {
+                $notifications->deadline($task, $student, 'due_today');
+            }
+
+            return $task;
+        });
+
+        return new TaskResource($task);
     }
 
     public function show(Task $task): TaskResource

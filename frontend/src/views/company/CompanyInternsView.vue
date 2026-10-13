@@ -28,6 +28,8 @@ const workDayOptions = [
 const newInternForm = reactive({
   first_name: '',
   last_name: '',
+  suffix: '',
+  age: '',
   email: '',
   password: '',
   password_confirmation: '',
@@ -141,6 +143,8 @@ const createIntern = async () => {
   try {
     const intern = await createCompanyIntern({
       ...newInternForm,
+      suffix: newInternForm.suffix || null,
+      age: Number(newInternForm.age),
       work_days: [...newInternForm.work_days],
       expected_hours_per_day: Number(newInternForm.expected_hours_per_day),
     })
@@ -348,6 +352,24 @@ onMounted(loadInterns)
             <label for="new-intern-last-name" class="block text-sm font-semibold text-slate-800">Last name</label>
             <input id="new-intern-last-name" v-model="newInternForm.last_name" type="text" autocomplete="family-name" required maxlength="100" :aria-invalid="Boolean(createErrors.last_name)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
             <p v-if="createErrors.last_name" class="mt-1 text-sm text-red-700" role="alert">{{ createErrors.last_name[0] }}</p>
+          </div>
+          <div>
+            <label for="new-intern-suffix" class="block text-sm font-semibold text-slate-800">Suffix <span class="font-normal text-slate-500">(optional)</span></label>
+            <select id="new-intern-suffix" v-model="newInternForm.suffix" :aria-invalid="Boolean(createErrors.suffix)" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200">
+              <option value="">None</option>
+              <option value="Jr.">Jr.</option>
+              <option value="Sr.">Sr.</option>
+              <option value="II">II</option>
+              <option value="III">III</option>
+              <option value="IV">IV</option>
+              <option value="V">V</option>
+            </select>
+            <p v-if="createErrors.suffix" class="mt-1 text-sm text-red-700" role="alert">{{ createErrors.suffix[0] }}</p>
+          </div>
+          <div>
+            <label for="new-intern-age" class="block text-sm font-semibold text-slate-800">Age</label>
+            <input id="new-intern-age" v-model="newInternForm.age" type="number" min="1" max="120" step="1" required :aria-invalid="Boolean(createErrors.age)" :aria-describedby="createErrors.age ? 'new-intern-age-error' : undefined" class="mt-2 block min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200" />
+            <p v-if="createErrors.age" id="new-intern-age-error" class="mt-1 text-sm text-red-700" role="alert">{{ createErrors.age[0] }}</p>
           </div>
         </div>
 

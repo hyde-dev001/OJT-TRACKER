@@ -10,7 +10,7 @@ class EnsureAccountRole
 {
     public function handle(Request $request, Closure $next, string $role): Response
     {
-        abort_unless($request->user()?->role === $role, 403);
+        abort_unless(in_array($request->user()?->role, explode('|', $role), true), 403);
 
         return $next($request);
     }

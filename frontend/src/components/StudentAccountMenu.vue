@@ -95,6 +95,7 @@ onBeforeUnmount(() => {
           <span class="account-avatar account-avatar--menu" aria-hidden="true">{{ initials }}</span>
           <div class="min-w-0">
             <p class="truncate font-semibold text-slate-950">{{ props.user?.name || 'Student' }}</p>
+            <p v-if="props.user?.role === 'company' && props.user.company_name" data-testid="account-company-name" class="truncate text-sm text-slate-600"><span class="font-medium">Company:</span> {{ props.user.company_name }}</p>
             <p class="truncate text-sm text-slate-600">{{ props.user?.email || 'Student account' }}</p>
           </div>
         </div>

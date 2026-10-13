@@ -144,7 +144,7 @@ describe('CompanyAttendanceView', () => {
     expect(wrapper.text()).toContain('In progress')
   })
 
-  it('records break minutes at time out and reloads the selected intern’s sessions', async () => {
+  it('records time out with zero break minutes and leaves corrections to edit work hours', async () => {
     const openLog = {
       id: 15,
       work_date: todayInPhilippines(),
@@ -162,12 +162,11 @@ describe('CompanyAttendanceView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(wrapper.get('#attendance-break-minutes').attributes('aria-describedby')).toBeUndefined()
-    await wrapper.get('#attendance-break-minutes').setValue('30')
+    expect(wrapper.find('#attendance-break-minutes').exists()).toBe(false)
     await wrapper.get('[data-testid="time-out-7"]').trigger('click')
     await flushPromises()
 
-    expect(endCompanyWorkLog).toHaveBeenCalledWith(7, { break_minutes: 30 })
+    expect(endCompanyWorkLog).toHaveBeenCalledWith(7, { break_minutes: 0 })
     expect(listCompanyInternWorkLogs).toHaveBeenCalledTimes(2)
     expect(document.body.textContent).toContain('Time out recorded')
   })

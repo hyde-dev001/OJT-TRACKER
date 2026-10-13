@@ -1,10 +1,19 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import InternRequirementsView from './InternRequirementsView.vue'
-import { downloadInternRequirementProof, listInternRequirements, submitInternRequirementProof } from '../../services/ojt'
+import { downloadInternRequirementProof, getInternRequirement, listInternRequirements, submitInternRequirementProof } from '../../services/ojt'
+
+const route = vi.hoisted(() => ({ query: {}, hash: '' }))
+const routerReplace = vi.hoisted(() => vi.fn())
+
+vi.mock('vue-router', () => ({
+  useRoute: () => route,
+  useRouter: () => ({ replace: routerReplace }),
+}))
 
 vi.mock('../../services/ojt', () => ({
   downloadInternRequirementProof: vi.fn(),
+  getInternRequirement: vi.fn(),
   listInternRequirements: vi.fn(),
   submitInternRequirementProof: vi.fn(),
 }))
@@ -48,7 +57,11 @@ const mountView = () => mount(InternRequirementsView, {
 })
 
 describe('InternRequirementsView', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    route.query = {}
+    route.hash = ''
+  })
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows assigned requirement details and required status', async () => {
@@ -62,6 +75,34 @@ describe('InternRequirementsView', () => {
     expect(wrapper.get('[data-testid="submit-requirement-proof-8"]').text()).toContain('Submit proof')
     expect(wrapper.find('[data-testid="edit-requirement-8"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="delete-requirement-8"]').exists()).toBe(false)
+  })
+
+  it('shows and highlights an exact off-page requirement from a notification', async () => {
+    const target = { ...requirement, id: 99, title: 'Exact submitted requirement', proof_available: true }
+    route.query = { requirement_id: '99' }
+    listInternRequirements.mockResolvedValueOnce(page([requirement]))
+    getInternRequirement.mockResolvedValueOnce(target)
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(getInternRequirement).toHaveBeenCalledWith(99)
+    expect(wrapper.get('[data-testid="intern-requirement-99"]').text()).toContain('Exact submitted requirement')
+    expect(wrapper.get('[data-testid="intern-requirement-99"]').attributes('data-notification-target')).toBe('true')
+    expect(wrapper.get('[data-testid="view-requirement-proof-99"]').exists()).toBe(true)
+    expect(routerReplace).toHaveBeenCalledWith({ query: route.query, hash: '#intern-requirement-99' })
+    wrapper.unmount()
+  })
+
+  it('shows a recoverable message when a notification requirement is unavailable', async () => {
+    route.query = { requirement_id: '404' }
+    listInternRequirements.mockResolvedValueOnce(page())
+    getInternRequirement.mockRejectedValueOnce(new Error('missing'))
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="intern-requirement-target-error"]').text()).toContain('Unable to reach the API')
+    expect(wrapper.get('[data-testid="intern-requirement-target-error"] a').attributes('href')).toBe('/intern/requirements')
+    wrapper.unmount()
   })
 
   it('submits a single image or PDF with an optional comment', async () => {

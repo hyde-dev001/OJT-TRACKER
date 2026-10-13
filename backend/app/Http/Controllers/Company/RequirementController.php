@@ -8,6 +8,7 @@ use App\Http\Requests\StoreCompanyRequirementRequest;
 use App\Http\Resources\RequirementResource;
 use App\Models\Internship;
 use App\Models\User;
+use App\Services\CompanyInternNotifications;
 use App\Services\WorkItemProofs;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -30,35 +31,50 @@ class RequirementController extends Controller
         );
     }
 
-    public function store(StoreCompanyRequirementRequest $request, User $intern): RequirementResource
+    public function show(Request $request, User $intern, int $requirement): RequirementResource
+    {
+        return new RequirementResource($this->internshipFor($request, $intern)->requirements()->whereKey($requirement)->firstOrFail());
+    }
+
+    public function store(StoreCompanyRequirementRequest $request, CompanyInternNotifications $notifications, User $intern): RequirementResource
     {
         $internship = $this->internshipFor($request, $intern);
         $data = $request->safe()->only(['title', 'description', 'due_date', 'is_required']);
 
-        $requirement = $internship->requirements()->create([
-            ...$data,
-            'is_required' => $data['is_required'] ?? true,
-            'status' => 'incomplete',
-            'submission_status' => 'not_submitted',
-        ]);
+        $requirement = DB::transaction(function () use ($internship, $intern, $notifications, $data) {
+            $requirement = $internship->requirements()->create([
+                ...$data,
+                'is_required' => $data['is_required'] ?? true,
+                'status' => 'incomplete',
+                'submission_status' => 'not_submitted',
+            ]);
+            $notifications->assignmentCreated($requirement, $intern);
+            if ($requirement->due_date?->toDateString() === today('Asia/Manila')->toDateString()) {
+                $notifications->deadline($requirement, $intern, 'due_today');
+            }
+
+            return $requirement;
+        });
 
         return new RequirementResource($requirement);
     }
 
     public function approve(
         ReviewCompanyWorkItemRequest $request,
+        CompanyInternNotifications $notifications,
         User $intern,
         int $requirement,
     ): RequirementResource {
-        return $this->review($request, $intern, $requirement, 'approved');
+        return $this->review($request, $notifications, $intern, $requirement, 'approved');
     }
 
     public function requestChanges(
         ReviewCompanyWorkItemRequest $request,
+        CompanyInternNotifications $notifications,
         User $intern,
         int $requirement,
     ): RequirementResource {
-        return $this->review($request, $intern, $requirement, 'changes_requested');
+        return $this->review($request, $notifications, $intern, $requirement, 'changes_requested');
     }
 
     public function proof(
@@ -74,12 +90,13 @@ class RequirementController extends Controller
 
     private function review(
         ReviewCompanyWorkItemRequest $request,
+        CompanyInternNotifications $notifications,
         User $intern,
         int $requirementId,
         string $decision,
     ): RequirementResource {
         $internship = $this->internshipFor($request, $intern);
-        $requirement = DB::transaction(function () use ($request, $internship, $requirementId, $decision) {
+        $requirement = DB::transaction(function () use ($request, $internship, $requirementId, $decision, $intern, $notifications) {
             $requirement = $internship->requirements()->whereKey($requirementId)->lockForUpdate()->firstOrFail();
             abort_unless($requirement->submission_status === 'pending_review', 409);
 
@@ -93,8 +110,10 @@ class RequirementController extends Controller
                 $data['completed_at'] = now();
             }
             $requirement->update($data);
+            $requirement = $requirement->refresh();
+            $notifications->reviewed($requirement, $intern, $decision);
 
-            return $requirement->refresh();
+            return $requirement;
         });
 
         return new RequirementResource($requirement);

@@ -93,7 +93,7 @@ schedules.
 - Time out must be after time in and the break cannot consume the entire session.
 - New logs are saved as `completed` so they count toward progress immediately.
 - Completed logs remain editable and deletable by the student.
-- Company-managed attendance allows one session per intern per workday. Time in captures the server's Manila-local date and time; the company account holder records time out and break minutes, and can correct the work date, times, and break on open or completed entries. The backend recalculates duration and status; managers cannot delete entries.
+- Company-managed attendance allows one session per intern per workday. Time in captures the server's Manila-local date and time; time out keeps the session's saved break value, defaulting to zero. The company account holder can correct the work date, times, and break on open or completed entries through Edit work hours. The backend recalculates duration and status; managers cannot delete entries.
 - Company-managed interns can view their own sessions and backend-calculated progress but have no attendance write controls. An open session has no rendered duration and does not count toward progress.
 - A migration converts any legacy `draft` rows to `completed`.
 - Progress is completed rendered minutes divided by the configurable total required minutes, capped at 100 percent.
@@ -178,13 +178,15 @@ Personal task and requirement APIs remain separate and unchanged.
 
 ## Explicitly out of scope
 
-- Notifications, full reporting/analytics modules, AI, or external completion
-  certification; the only export exception is the personal progress-summary PDF
+- Email, browser push, SMS, real-time sockets, full reporting/analytics modules,
+  AI, or external completion
+  certification; the only export exception is the progress-summary PDF for
+  personal students and company-managed interns
 - Official attendance certification or verification
 - submission or review history, multiple proof files per item, or public proof URLs
 - additional company roles or staff seats, company verification, invitations,
   or administrator approval
-- assignment editing/deletion, notifications, or email workflows
+- assignment editing/deletion or email workflows
 - HR, payroll, class, grading, or school-management modules
 - mobile app, chat, video, biometrics, GPS, QR attendance, or payments
 
@@ -196,6 +198,9 @@ Personal task and requirement APIs remain separate and unchanged.
   and the account menu. Company navigation includes intern accounts,
   Attendance, Tasks, and Requirements; company-managed intern navigation
   includes OJT account setup, read-only Work Hours, Tasks, and Requirements.
+  Company, intern, and personal-student headers include an in-app notification
+  bell. Personal students receive missed-scheduled-workday and task/requirement
+  due reminders without changes to their tracking workflows.
 - Neutral/light Cal-inspired styling with near-black primary actions.
 - Status is communicated with text as well as color.
 - Loading, empty, success, validation, and recoverable error states are required.
@@ -240,8 +245,9 @@ preserving personal student workflows.
 ### Slice 2 - Company attendance and intern work hours
 
 Adds one company-managed attendance session per intern per workday. The company
-account holder records time in, time out, and break minutes, and can correct
-open or completed entries; the backend calculates rendered duration. Interns
+account holder records time in and time out; break minutes default to zero and
+can be corrected on open or completed entries through Edit work hours. The
+backend calculates rendered duration. Interns
 can view their own sessions and progress without attendance controls. Personal
 student work logging remains unchanged. Company-managed records do not certify
 official school or company attendance or completion.
@@ -253,7 +259,18 @@ Company account holders create assignments and review private intern image or
 PDF proof; interns can submit and replace proof after a change request.
 Approval completes the item. The personal student task and requirement flows
 remain unchanged. Assignment editing/deletion, submission history,
-notifications, and public proof URLs are not included.
+and public proof URLs are not included.
+
+Company-managed assignment, proof-submission, review, due-today, and overdue
+events appear in a paginated in-app notification list for the company account
+holder or assigned intern. Notifications link to the exact authorized item;
+company links also select the intern. Personal students receive one alert for
+each previous scheduled workday without a work log and due-today/overdue alerts
+for unfinished tasks and requirements. A personal task or requirement created
+with today's due date receives its due-today notification immediately. The
+scheduled checks run daily at 9:00 a.m. Asia/Manila, so local development and
+deployment must run Laravel's scheduler. Mark all as read preserves
+notification history.
 
 ### Phase 4 - Progress and Needs-Attention assistant
 

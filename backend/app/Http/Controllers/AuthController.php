@@ -192,10 +192,10 @@ class AuthController extends Controller
         ];
     }
 
-    /** @return array{id: int, name: string, first_name: ?string, last_name: ?string, suffix: ?string, email: string, role: string, must_change_password: bool} */
+    /** @return array<string, mixed> */
     private function userPayload(User $user): array
     {
-        return [
+        $payload = [
             'id' => $user->id,
             'name' => $user->name,
             'first_name' => $user->first_name,
@@ -205,5 +205,11 @@ class AuthController extends Controller
             'role' => $user->role,
             'must_change_password' => $user->must_change_password,
         ];
+
+        if ($user->role === 'company') {
+            $payload['company_name'] = $user->company?->name;
+        }
+
+        return $payload;
     }
 }

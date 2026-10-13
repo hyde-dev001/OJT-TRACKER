@@ -31,6 +31,7 @@ class User extends Authenticatable
         'first_name',
         'last_name',
         'suffix',
+        'age',
         'email',
         'password',
     ];
@@ -56,6 +57,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'age' => 'integer',
         ];
     }
 

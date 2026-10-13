@@ -54,6 +54,25 @@ describe('InternWorkHoursView', () => {
     expect(wrapper.text()).not.toContain('Time out')
   })
 
+  it('opens a work-session breakdown with its time and break details', async () => {
+    const wrapper = mount(InternWorkHoursView)
+    await flushPromises()
+
+    await wrapper.get('[data-testid="view-work-log-15"]').trigger('click')
+
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.textContent).toContain('Work session details')
+    expect(dialog?.textContent).toContain('Oct 12, 2026')
+    expect(dialog?.textContent).toContain('8:00 AM')
+    expect(dialog?.textContent).toContain('5:00 PM')
+    expect(dialog?.textContent).toContain('60 minutes')
+    expect(dialog?.textContent).toContain('8h')
+    document.body.querySelector('[data-testid="close-work-session-details"]').click()
+    await flushPromises()
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+    wrapper.unmount()
+  })
+
   it('labels an open session in progress and does not show its duration', async () => {
     ojt.listInternWorkLogs.mockResolvedValue(page([
       { id: 16, work_date: '2026-10-13', time_in: '09:15', time_out: null, break_minutes: null, rendered_minutes: null, status: 'open' },
@@ -65,6 +84,11 @@ describe('InternWorkHoursView', () => {
     expect(row.text()).toContain('In progress')
     expect(row.text()).not.toContain('0m')
     expect(row.text()).not.toContain('NaN')
+
+    await wrapper.get('[data-testid="view-work-log-16"]').trigger('click')
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.textContent).toContain('Time outIn progress')
+    expect(dialog?.textContent).toContain('Not available while in progress')
   })
 
   it('shows completed hours without a percentage when the target is not set', async () => {

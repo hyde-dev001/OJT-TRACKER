@@ -103,6 +103,19 @@ describe('CompanyInternsView', () => {
     expect(wrapper.get('#new-intern-password').attributes('type')).toBe('password')
   })
 
+  it('collects age and an optional suffix when creating a company intern', async () => {
+    listCompanyInterns.mockResolvedValueOnce([])
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.get('[data-testid="open-create-intern-modal"]').trigger('click')
+
+    expect(wrapper.get('#new-intern-age').attributes('type')).toBe('number')
+    expect(wrapper.get('#new-intern-age').attributes('min')).toBe('1')
+    expect(wrapper.get('#new-intern-age').attributes('max')).toBe('120')
+    expect(wrapper.get('#new-intern-age').attributes('required')).toBeDefined()
+    expect(wrapper.get('#new-intern-suffix').findAll('option').map((option) => option.element.value)).toEqual(['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V'])
+  })
+
   it('keeps creation in a modal and lists interns in a paginated table', async () => {
     const interns = Array.from({ length: 12 }, (_, index) => ({
       ...intern,
@@ -141,6 +154,8 @@ describe('CompanyInternsView', () => {
     expect(createCompanyIntern).toHaveBeenCalledWith({
       first_name: 'Taylor',
       last_name: 'Lee',
+      age: 20,
+      suffix: 'Jr.',
       email: 'taylor.lee@example.com',
       password: 'TemporaryPass1!',
       password_confirmation: 'TemporaryPass1!',
@@ -221,6 +236,8 @@ async function fillCreateForm(wrapper) {
   }
   await wrapper.get('#new-intern-first-name').setValue('Taylor')
   await wrapper.get('#new-intern-last-name').setValue('Lee')
+  await wrapper.get('#new-intern-age').setValue('20')
+  await wrapper.get('#new-intern-suffix').setValue('Jr.')
   await wrapper.get('#new-intern-email').setValue('taylor.lee@example.com')
   await wrapper.get('#new-intern-password').setValue('TemporaryPass1!')
   await wrapper.get('#new-intern-password-confirmation').setValue('TemporaryPass1!')
